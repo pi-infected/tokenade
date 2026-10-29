@@ -387,14 +387,21 @@ async function server() {
 
 // v2 entrypoint (opencode >= 2). Hooks are registered on their domain, and
 // the callback receives ONE mutable event instead of (input, output); the
-// model-visible text lives in `event.result.content`, see `execute.after`.
+// model-visible text is located by `modelResult`, in the host's own order.
+//
+// The bus is an ASYNC ITERABLE of `{ type, data }` — `subscribe()` returns the
+// iterable itself, it does not take a callback — and every `session.*` event's
+// `data` carries `sessionID`. The 1.x name for the compaction event
+// (`session.compacted`, `properties.sessionID`) does not exist in 2.x: the
+// 2.2.1 binary contains no such string at all, only
+// `session.compaction.started|delta|ended|failed`. Listening for the old name
+// here made the reset dead code, silently, for every 2.x install.
 async function setup(ctx) {
-  const controller = new AbortController();
   void (async () => {
     try {
-      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        const compacted = event?.type === "session.compacted";
-        if (compacted) tickSession(sessionKey(event?.properties?.sessionID), AGENT, true);
+      for await (const event of ctx.event.subscribe({})) {
+        if (event?.type !== "session.compaction.ended") continue;
+        tickSession(sessionKey(event?.data?.sessionID), AGENT, true);
       }
     } catch {
       /* the subscription ends with the plugin */
@@ -412,39 +419,48 @@ async function setup(ctx) {
     if (event?.status !== "completed") return;
     const result = event?.result;
     if (!result) return;
-    // Read what the MODEL reads, in the host's own order (core `normalizeContent`):
-    // `content` when it is a string or a non-empty array, `output` only when
-    // `content` is empty. `output` is often STRUCTURED (the shell tool's is
-    // `{ output, exit, truncated, … }`), so it is never overwritten unless it
-    // was itself the string we folded. In an array only the first text part —
-    // the payload — is folded: the shell tool appends its exit/timeout notice
-    // as a second part, which must survive.
-    const content = result.content;
-    let carried;
-    let write;
-    if (typeof content === "string") {
-      carried = content;
-      write = (text) => { result.content = text; };
-    } else if (Array.isArray(content) && content.length > 0) {
-      const i = content.findIndex((p) => p && p.type === "text" && typeof p.text === "string");
-      if (i < 0) return;
-      carried = content[i].text;
-      write = (text) => { result.content = content.map((p, j) => (j === i ? { ...p, text } : p)); };
-    } else if (typeof result.output === "string") {
-      carried = result.output;
-      write = (text) => { result.output = text; };
-    } else {
-      return;
-    }
-    const out = { output: carried, args: event?.input, metadata: result.metadata };
+    // Read what the MODEL reads, in the host's own order (core
+    // `normalizeContent`): `content` when it is a string or a non-empty
+    // array, `output` only when `content` is empty. `output` is often
+    // STRUCTURED (the shell tool's is `{ output, exit, truncated, … }`), so
+    // it is never replaced wholesale — only its text field is written, and
+    // only when it was itself the text that got folded.
+    //
+    // In an array only the first text part — the payload — is folded: the
+    // shell tool appends its exit/timeout notice as a second part, which
+    // must survive. Replacing the array (rather than mutating the part) is
+    // deliberate: the host reads `result.content` back after the hook.
+    const carried = modelResult(result);
+    if (!carried) return;
+    const out = { output: carried.text, args: event?.input, metadata: result.metadata };
     await onToolAfter({ tool: event?.tool, args: event?.input, sessionID: event?.sessionID }, out);
-    if (out.output !== carried) write(out.output);
+    if (out.output !== carried.text) carried.write(out.output);
   });
+}
 
-  // A returned truthy NON-function is treated as a cleanup function and
-  // called, so only this controller is returned. Hook registrations are
-  // scoped to the plugin and need no disposal.
-  return () => controller.abort();
+// The text the model will read, plus how to put a replacement back where it
+// came from. Mirrors the host's fallback chain; returns null when the result
+// carries no text at all.
+function modelResult(result) {
+  const content = result?.content;
+  if (typeof content === "string") {
+    return { text: content, write: (text) => { result.content = text; } };
+  }
+  if (Array.isArray(content) && content.length > 0) {
+    const i = content.findIndex((p) => p && p.type === "text" && typeof p.text === "string");
+    if (i < 0) return null;
+    return {
+      text: content[i].text,
+      write: (text) => { result.content = content.map((p, j) => (j === i ? { ...p, text } : p)); },
+    };
+  }
+  if (typeof result?.output === "string") {
+    return { text: result.output, write: (text) => { result.output = text; } };
+  }
+  if (result?.output && typeof result.output.output === "string") {
+    return { text: result.output.output, write: (text) => { result.output.output = text; } };
+  }
+  return null;
 }
 
 export default { id: "tokenade", setup, server };

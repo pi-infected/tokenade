@@ -145,6 +145,56 @@ out.opencode_terminal = o2.output.length;
   out.opencode_v2_content = e3.result.content[0].text.length;
   out.opencode_v2_notice_kept = e3.result.content[1].text === "exit 1";
   out.opencode_v2_output_kept = e3.result.output === structured && structured.output === body;
+  // Content EMPTY and `output` structured: the host falls back to `output`,
+  // and that text is what the model reads. An adapter that only handled a
+  // STRING `output` folded nothing here.
+  const only = { output: body, exit: 0, truncated: false };
+  const e4 = { tool: "shell", sessionID: "s1", input: { command: "journalctl -n 600" },
+               status: "completed", result: { output: only, content: [] } };
+  await v2["execute.after"](e4);
+  out.opencode_v2_output_only = only.output.length;
+  out.opencode_v2_output_only_kept = e4.result.output === only
+    && Array.isArray(e4.result.content) && e4.result.content.length === 0;
+}
+
+// The 2.x compaction event. The bus is an ASYNC ITERABLE of `{ type, data }`;
+// the old adapter listened for 1.x's `session.compacted` / `properties`, which
+// 2.x never emits (the 2.2.1 binary contains no such string at all), so
+// `session-tick --reset` was dead code. A stub binary records the argv it
+// receives, which is the only observable side of the reset.
+{
+  const stub = process.cwd() + "/tick-stub.sh";
+  const tickLog = process.cwd() + "/tick.log";
+  fs.writeFileSync(stub, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TOKENADE_TICK_LOG"\n');
+  fs.chmodSync(stub, 0o755);
+  // The stub is scoped to this block: a bridge imported AFTER it resolves the
+  // binary on load, so leaving it set would hand `pi` (below) the stub and
+  // silently un-fold it.
+  const realBin = process.env.TOKENADE_BIN;
+  process.env.TOKENADE_BIN = stub;
+  process.env.TOKENADE_TICK_LOG = tickLog;
+  // A fresh module instance: the one above already resolved the real binary.
+  const ocEvent = (await import("./oc.ts?compaction-event")).default;
+  const feed = [];
+  const waiting = [];
+  const send = (ev) => { const w = waiting.shift(); if (w) w(ev); else feed.push(ev); };
+  await ocEvent.setup({
+    tool: { hook: async () => ({ dispose: async () => {} }) },
+    event: { subscribe: () => (async function* () {
+      for (;;) {
+        const next = feed.length ? feed.shift() : await new Promise((r) => waiting.push(r));
+        yield next;
+      }
+    })() },
+  });
+  send({ type: "session.compaction.ended", data: { sessionID: "ses_compact" } });
+  let tick = "";
+  for (let i = 0; i < 100 && !tick; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    try { tick = fs.readFileSync(tickLog, "utf8").trim(); } catch {}
+  }
+  out.opencode_v2_compaction_tick = tick;
+  process.env.TOKENADE_BIN = realBin;
 }
 
 const pi = (await import("./pi.ts")).default;
@@ -393,6 +443,30 @@ console.log(JSON.stringify(out));
         v["opencode_v2_output_kept"].as_bool(),
         Some(true),
         "the v2 path replaced the shell tool's structured `output`"
+    );
+    // `content` empty -> the host falls back to `output`, which for the shell
+    // tool is structured. The adapter handled only a STRING `output`, so this
+    // payload reached the model unfolded.
+    let v2_output_only = v["opencode_v2_output_only"].as_u64().unwrap_or(before);
+    assert!(
+        v2_output_only * 4 < before,
+        "the v2 path did not fold a structured `output` when `content` was empty \
+         ({v2_output_only} chars for {before})"
+    );
+    assert_eq!(
+        v["opencode_v2_output_only_kept"].as_bool(),
+        Some(true),
+        "the v2 path replaced the shell tool's structured `output` object instead of its text field"
+    );
+    // The compaction reset. 2.x renamed 1.x's `session.compacted` to
+    // `session.compaction.ended` and moved `sessionID` under `data`; the bridge
+    // listened for the old name, so `session-tick --reset` never ran and the
+    // ledger kept counting a conversation the host had already compacted.
+    let tick = v["opencode_v2_compaction_tick"].as_str().unwrap_or("");
+    assert!(
+        tick.contains("--reset") && tick.contains("--session ses_compact"),
+        "the v2 `session.compaction.ended` event did not trigger `session-tick --reset` \
+         (received {tick:?})"
     );
 
     // The command hint. Measured 2026-08-08: with a tool named

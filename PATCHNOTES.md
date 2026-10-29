@@ -1,4 +1,7 @@
 # Tokenade — what's new
+## Unreleased
+- opencode 2: the plugin bridge now resets the savings ledger on the 2.x compaction event (`session.compaction.ended`, `event.data.sessionID`) and folds a structured shell `output` when the host's `result.content` is empty. Both were silent no-ops: the bridge listened for 1.x's removed `session.compacted` event, and accepted only a string `output`.
+
 ## 2.0.4
 - A repeated `Read` of an unchanged file, and any `Read` Tokenade shrinks to a head slice, now gets its note or compacted view delivered. It was staged under the line limit the agent asked for, while the delivery hook looks it up under the shortened one, so the agent got the first 20 lines and nothing else (#6).
 - The rules file scaffold only touches what a marker proves is Tokenade's: the `<!-- tokenade-scaffold -->` block, the `<!-- tokenade:start -->` fence, and the intro of a file Tokenade created. Sections titled `## Commands`, `## Project rules`, `## Engineering principles` or `## Codebase exploration` in your `CLAUDE.md` / `AGENTS.md` are no longer removed (#7). Leftovers from 1.x outside those markers are no longer cleaned up automatically.
