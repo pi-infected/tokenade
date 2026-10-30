@@ -2120,7 +2120,8 @@ fn e2e_a_compaction_or_clear_on_any_host_resets_the_charged_context() {
             "SessionStart",
             serde_json::json!({"source": "clear"}),
         ),
-        // A plugin bridge (opencode `session.compacted`, pi `session_compact`).
+        // A plugin bridge (opencode 1.x `session.compacted` / 2.x
+        // `session.compaction.ended`, pi `session_compact`).
         (
             vec![
                 "session-tick",

@@ -397,9 +397,10 @@ async function server() {
 // `session.compaction.started|delta|ended|failed`. Listening for the old name
 // here made the reset dead code, silently, for every 2.x install.
 async function setup(ctx) {
+  const controller = new AbortController();
   void (async () => {
     try {
-      for await (const event of ctx.event.subscribe({})) {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
         if (event?.type !== "session.compaction.ended") continue;
         tickSession(sessionKey(event?.data?.sessionID), AGENT, true);
       }
@@ -436,6 +437,11 @@ async function setup(ctx) {
     await onToolAfter({ tool: event?.tool, args: event?.input, sessionID: event?.sessionID }, out);
     if (out.output !== carried.text) carried.write(out.output);
   });
+
+  // A returned truthy NON-function is treated as a cleanup function and
+  // called, so only this controller is returned. Hook registrations are
+  // scoped to the plugin and need no disposal.
+  return () => controller.abort();
 }
 
 // The text the model will read, plus how to put a replacement back where it

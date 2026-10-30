@@ -173,28 +173,34 @@ out.opencode_terminal = o2.output.length;
   const realBin = process.env.TOKENADE_BIN;
   process.env.TOKENADE_BIN = stub;
   process.env.TOKENADE_TICK_LOG = tickLog;
-  // A fresh module instance: the one above already resolved the real binary.
-  const ocEvent = (await import("./oc.ts?compaction-event")).default;
-  const feed = [];
-  const waiting = [];
-  const send = (ev) => { const w = waiting.shift(); if (w) w(ev); else feed.push(ev); };
-  await ocEvent.setup({
-    tool: { hook: async () => ({ dispose: async () => {} }) },
-    event: { subscribe: () => (async function* () {
-      for (;;) {
-        const next = feed.length ? feed.shift() : await new Promise((r) => waiting.push(r));
-        yield next;
-      }
-    })() },
-  });
-  send({ type: "session.compaction.ended", data: { sessionID: "ses_compact" } });
-  let tick = "";
-  for (let i = 0; i < 100 && !tick; i++) {
-    await new Promise((r) => setTimeout(r, 20));
-    try { tick = fs.readFileSync(tickLog, "utf8").trim(); } catch {}
+  let cleanup;
+  try {
+    // A fresh module instance: the one above already resolved the real binary.
+    const ocEvent = (await import("./oc.ts?compaction-event")).default;
+    const feed = [];
+    const waiting = [];
+    const send = (ev) => { const w = waiting.shift(); if (w) w(ev); else feed.push(ev); };
+    cleanup = await ocEvent.setup({
+      tool: { hook: async () => ({ dispose: async () => {} }) },
+      event: { subscribe: () => (async function* () {
+        for (;;) {
+          const next = feed.length ? feed.shift() : await new Promise((r) => waiting.push(r));
+          yield next;
+        }
+      })() },
+    });
+    send({ type: "session.compaction.ended", data: { sessionID: "ses_compact" } });
+    let tick = "";
+    for (let i = 0; i < 100 && !tick; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      try { tick = fs.readFileSync(tickLog, "utf8").trim(); } catch {}
+    }
+    out.opencode_v2_compaction_tick = tick;
+  } finally {
+    if (typeof cleanup === "function") cleanup();
+    process.env.TOKENADE_BIN = realBin;
+    delete process.env.TOKENADE_TICK_LOG;
   }
-  out.opencode_v2_compaction_tick = tick;
-  process.env.TOKENADE_BIN = realBin;
 }
 
 const pi = (await import("./pi.ts")).default;
