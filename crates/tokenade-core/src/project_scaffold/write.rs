@@ -1,9 +1,10 @@
 //! **Writing the rules block into an agent's file.**
 //!
 //! Update = remove everything that is ours, then write the current block.
-//! The headings we publish (and the markers) identify the region; the body is
-//! not read, so an older wording does not need to appear in a table. Prose
-//! outside those regions stays.
+//! "Ours" is ONLY what a marker proves: the `<!-- tokenade-scaffold -->` block,
+//! the `<!-- tokenade:start -->` fence, and the exact intro of a file we
+//! created. Headings and wordings are never matched — `## Commands` is a title
+//! users write too (#7). Files from before 2.0 are not healed.
 
 use super::*;
 
@@ -39,42 +40,39 @@ pub(super) fn parse_flag_version(s: &str) -> Option<u32> {
     None
 }
 
-/// Headings we publish. The body is not read: an older wording under this
-/// heading is ours, a newer one too.
-fn owned_heading(t: &str) -> bool {
-    t.starts_with("## Tokenade rules (v")
-        || t.starts_with("## Explore code")
-        || t.starts_with("## Compute over data with")
-        || t == "## Commands"
-        || t == "## Keep output lean"
-        || t == "## Codebase exploration"
-        || t == "## Engineering principles"
-        || t == "## Searching the web"
-        || t.starts_with("## Reading documents")
-        || t.starts_with("## Fetching or searching")
-        || t == "## Project rules"
-        || t == "## Tokenade is installed"
-}
-
+/// The intro [`fresh_rules_file`] writes above the block, line for line.
 fn wrapper_line(t: &str) -> bool {
-    t == "# Project rules for AI coding agents" || t.starts_with("Auto-scaffolded by tokenade")
+    t == WRAPPER_TITLE || t == WRAPPER_INTRO
 }
 
-fn is_heading(t: &str) -> bool {
-    t.starts_with("# ") || t.starts_with("## ")
+const WRAPPER_TITLE: &str = "# Project rules for AI coding agents";
+const WRAPPER_INTRO: &str = "Auto-scaffolded by tokenade on first MCP session. Safe to edit; the \
+tokenade block below is identified by the HTML marker and will be \
+updated in-place on future tokenade upgrades.";
+
+/// Opening marker → its closing marker.
+fn region_end(t: &str) -> Option<&'static str> {
+    if t == SCAFFOLD_MARKER {
+        Some(SCAFFOLD_END_MARKER)
+    } else if t == OLD_CLAUDE_FENCE_START {
+        Some(OLD_CLAUDE_FENCE_END)
+    } else {
+        None
+    }
 }
 
-fn is_fence_or_marker(t: &str) -> bool {
+fn is_marker(t: &str) -> bool {
     t == SCAFFOLD_MARKER
         || t == SCAFFOLD_END_MARKER
         || t == OLD_CLAUDE_FENCE_START
         || t == OLD_CLAUDE_FENCE_END
 }
 
-/// User prose on either side of EVERYTHING that is Tokenade's (markers, old
-/// fence, headings we write, intro). `found` is true as soon as a region of
-/// ours has been removed.
-fn take_user_sides(text: &str) -> (String, String, bool) {
+/// User prose on either side of what is provably Tokenade's: marked regions,
+/// stray marker lines, our intro. `found` is true as soon as one went. An
+/// opening marker with no closing one loses only its own line — without the
+/// bound, what follows cannot be proven ours.
+pub(super) fn take_user_sides(text: &str) -> (String, String, bool) {
     let lines: Vec<&str> = text.lines().collect();
     let mut prefix: Vec<&str> = Vec::new();
     let mut suffix: Vec<&str> = Vec::new();
@@ -82,39 +80,18 @@ fn take_user_sides(text: &str) -> (String, String, bool) {
     let mut i = 0;
     while i < lines.len() {
         let t = lines[i].trim();
-        let skip_to = if t == SCAFFOLD_MARKER {
-            Some(SCAFFOLD_END_MARKER)
-        } else if t == OLD_CLAUDE_FENCE_START {
-            Some(OLD_CLAUDE_FENCE_END)
-        } else {
-            None
-        };
-        if let Some(end) = skip_to {
+        if let Some(end) = region_end(t) {
             found = true;
-            i += 1;
-            while i < lines.len() && lines[i].trim() != end {
-                i += 1;
-            }
-            if i < lines.len() {
+            if let Some(j) = lines[i + 1..].iter().position(|l| l.trim() == end) {
+                i += j + 2;
+            } else {
                 i += 1;
             }
             continue;
         }
-        if t == SCAFFOLD_END_MARKER || t == OLD_CLAUDE_FENCE_END || wrapper_line(t) {
+        if is_marker(t) || wrapper_line(t) {
             found = true;
             i += 1;
-            continue;
-        }
-        if owned_heading(t) {
-            found = true;
-            i += 1;
-            while i < lines.len() {
-                let bt = lines[i].trim();
-                if is_heading(bt) || is_fence_or_marker(bt) {
-                    break;
-                }
-                i += 1;
-            }
             continue;
         }
         if found {
@@ -124,85 +101,7 @@ fn take_user_sides(text: &str) -> (String, String, bool) {
         }
         i += 1;
     }
-    let (prefix, dropped_before) = drop_our_paragraphs(&prefix);
-    let (suffix, dropped_after) = drop_our_paragraphs(&suffix);
-    let found = found || dropped_before || dropped_after;
     (join_lines(&prefix), join_lines(&suffix), found)
-}
-
-/// Every non-blank line the renderer writes, in every variant: read hook on
-/// or off, web-search hook on or off, with or without the commands section
-/// and the subagent note.
-fn rendered_lines() -> &'static std::collections::HashSet<String> {
-    static LINES: std::sync::OnceLock<std::collections::HashSet<String>> =
-        std::sync::OnceLock::new();
-    LINES.get_or_init(|| {
-        let mut set = std::collections::HashSet::new();
-        for bits in 0u8..16 {
-            let block = render_block(bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0);
-            set.extend(
-                block
-                    .lines()
-                    .map(str::trim)
-                    .filter(|l| !l.is_empty())
-                    .map(String::from),
-            );
-        }
-        set.extend(previous_lines());
-        set
-    })
-}
-
-/// **Lines an EARLIER renderer wrote.** A stranded copy is recognised by its
-/// text, so rewording a line orphaned every copy of the old one: the user's
-/// file kept four stale « tokenade can read … » paragraphs and gained a fifth.
-/// A reworded line goes here, in its old form, so the cleanup still knows it.
-fn previous_lines() -> Vec<String> {
-    // SPELLED OUT, never derived from today's lists: derived, the old line
-    // moved with every format added, and stopped matching the copies users
-    // have — `.doc` had already broken it before anyone noticed.
-    vec![
-        // 1.1.22 (until 2026-10-04): images promised as read, with no word of
-        // the OCR they need; no `.doc`, no `.ppt`.
-        "tokenade can read .pdf .docx .xlsx .xls .xlsb .pptx .odt .ods .odp .odg .epub .rtf .fb2 \
-(and their flat-XML, macro-enabled and template variants) (extracted text), .mp4 .mkv .mov .webm \
-.avi .mp3 .wav .m4a .flac .ogg .opus (and other common containers) (what the file is, plus a \
-transcript when available) and .png .jpg .jpeg .gif .webp .bmp .tif .tiff .ico .tga .pnm .pbm \
-.pgm .ppm .qoi .hdr — your own file reader cannot. Use:"
-            .to_string(),
-    ]
-}
-
-/// **A paragraph of ours, stranded without its heading, is still ours.**
-/// Recognised by its TEXT: every line of it is a line we render. Our titles
-/// only identify a region while the title is there — the user's global
-/// `~/.claude/CLAUDE.md` carried SIX headless copies of the « tokenade can
-/// read … » paragraph above the block, kept as the user's prose by every
-/// rewrite (2026-10-03). The 40-character floor keeps a short user line that
-/// happens to match one of ours (`---`, a lone command) out of it.
-fn is_our_paragraph(par: &[&str]) -> bool {
-    let ours = rendered_lines();
-    par.iter().any(|l| l.trim().len() >= 40) && par.iter().all(|l| ours.contains(l.trim()))
-}
-
-/// `lines` without the paragraphs [`is_our_paragraph`] claims, and whether
-/// any went.
-fn drop_our_paragraphs<'a>(lines: &[&'a str]) -> (Vec<&'a str>, bool) {
-    let mut kept = Vec::with_capacity(lines.len());
-    let mut dropped = false;
-    for par in lines.split(|l| l.trim().is_empty()) {
-        if !par.is_empty() && is_our_paragraph(par) {
-            dropped = true;
-            continue;
-        }
-        kept.extend_from_slice(par);
-        kept.push("");
-    }
-    kept.pop();
-    if !dropped {
-        return (lines.to_vec(), false);
-    }
-    (kept, true)
 }
 
 fn join_lines(lines: &[&str]) -> String {
@@ -224,13 +123,7 @@ fn join_lines(lines: &[&str]) -> String {
 }
 
 fn fresh_rules_file(block: &str) -> String {
-    format!(
-        "# Project rules for AI coding agents\n\n\
-Auto-scaffolded by tokenade on first MCP session. Safe to edit; the \
-tokenade block below is identified by the HTML marker and will be \
-updated in-place on future tokenade upgrades.\n\n\
-{block}"
-    )
+    format!("{WRAPPER_TITLE}\n\n{WRAPPER_INTRO}\n\n{block}")
 }
 
 /// Append-or-create the scaffold block in one rules file. Returns
@@ -411,14 +304,7 @@ fn splice_and_write(target: &Path, block: &str, prefix: &str, repo_scoped: bool)
         None => format!("{}\n", block.trim_end()),
         Some(e) => apply_scaffold_block(Some(e), block).unwrap_or_else(|| e.to_string()),
     };
-    // `---# Project rules…`: the end of frontmatter glued to the heading by an
-    // old `prefix.trim_end()` (1.1.19). Cursor no longer saw a closed
-    // frontmatter, and the project header stayed in a global.
-    let unglued = new_content.replace("\n---# ", "\n---\n\n# ");
-    let unglued = unglued
-        .strip_prefix("---# ")
-        .map_or(unglued.clone(), |r| format!("---\n\n# {r}"));
-    let kept: Vec<&str> = unglued
+    let kept: Vec<&str> = new_content
         .lines()
         .filter(|l| !wrapper_line(l.trim()))
         .collect();
@@ -438,18 +324,13 @@ fn splice_and_write(target: &Path, block: &str, prefix: &str, repo_scoped: bool)
 }
 
 fn has_owned_region(text: &str) -> bool {
-    text.lines().any(|line| {
-        let t = line.trim();
-        owned_heading(t) || t == OLD_CLAUDE_FENCE_START || t == SCAFFOLD_MARKER
-    }) || drop_our_paragraphs(&text.lines().collect::<Vec<_>>()).1
+    text.lines().any(|l| is_marker(l.trim()))
 }
 
 /// `None` = already up to date. `Some` = bytes to write.
 ///
-/// Everything that is Tokenade's goes; the current block is placed once.
-/// Prose outside our headings / markers stays. A file with no closing bound
-/// (1.1.18 fence up to EOF, a lone opened marker) is treated as a region of
-/// ours up to the end — we rewrite, we do not refuse.
+/// Everything a marker proves Tokenade's goes; the current block is placed
+/// once. Everything else stays (see [`take_user_sides`]).
 pub(super) fn apply_scaffold_block(existing: Option<&str>, block: &str) -> Option<String> {
     let Some(existing) = existing else {
         return Some(fresh_rules_file(block));

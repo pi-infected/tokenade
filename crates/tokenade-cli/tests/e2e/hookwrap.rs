@@ -1861,3 +1861,50 @@ fn a_downscaled_image_row_is_stamped_billed() {
         .unwrap_or_else(|| panic!("no image row:\n{ledger}\n{out}{err}"));
     assert!(row.contains("\"billed\":true"), "{row}");
 }
+
+/// #6 — a Read shrunk to a head slice gets its staged content back.
+///
+/// PreToolUse rewrites `limit` to the head; PostToolUse is handed that
+/// REWRITTEN input. Staged under the caller's `limit`, the entry was never
+/// found: a repeat `Read(offset 1, limit 60)` came back as 20 lines with no
+/// « unchanged » note — a silent cut the model took for the whole slice.
+#[test]
+fn e2e_a_shrunk_read_delivers_its_staged_context() {
+    let h = TempHome::new("shrunk-read-delivery");
+    let marker = h.path().join(".tokenade").join("postread-hook-ok");
+    std::fs::create_dir_all(marker.parent().unwrap()).unwrap();
+    std::fs::write(&marker, "").unwrap();
+    let f = h.path().join("big.log");
+    let body: String = (0..4_000)
+        .map(|i| {
+            format!(
+                "2024-01-01T00:00:{:02}Z INFO worker {i} processed batch {i}\n",
+                i % 60
+            )
+        })
+        .collect();
+    std::fs::write(&f, &body).unwrap();
+    let pre = serde_json::json!({
+        "hook_event_name": "PreToolUse", "session_id": "shrunk", "transcript_path": "/t",
+        "tool_name": "Read",
+        "tool_input": { "file_path": f.to_str().unwrap(), "offset": 1, "limit": 60 },
+    })
+    .to_string();
+    let _ = run_hook(&["hookwrap-pretool"], h.path(), &pre);
+    let (out, err, _) = run_hook(&["hookwrap-pretool"], h.path(), &pre);
+    let v: serde_json::Value = serde_json::from_str(out.trim())
+        .unwrap_or_else(|_| panic!("repeat Read not shrunk:\n{out}\n{err}"));
+    let updated = v["hookSpecificOutput"]["updatedInput"].clone();
+    assert_eq!(updated["limit"], 20, "{out}");
+    let resp: String = body.lines().take(20).collect::<Vec<_>>().join("\n");
+    let post = serde_json::json!({
+        "hook_event_name": "PostToolUse", "session_id": "shrunk", "transcript_path": "/t",
+        "tool_name": "Read", "tool_input": updated,
+        "tool_response": { "type": "text", "file": { "content": resp } },
+    });
+    let (out, err, _) = run_hook(&["hookwrap-postread"], h.path(), &post.to_string());
+    assert!(
+        out.contains("additionalContext") && out.contains("read-dedup unchanged"),
+        "staged note not delivered:\n{out}\n{err}"
+    );
+}

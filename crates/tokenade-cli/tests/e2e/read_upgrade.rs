@@ -19,7 +19,9 @@ fn old_block() -> String {
     )
 }
 fn header(body: &str) -> String {
-    format!("# Project rules for AI coding agents\n\nAuto-scaffolded by tokenade on first MCP session.\n\n{body}")
+    // The intro 2.x writes, word for word: since 2.0 only markers and this
+    // exact intro identify what is ours.
+    format!("# Project rules for AI coding agents\n\nAuto-scaffolded by tokenade on first MCP session. Safe to edit; the tokenade block below is identified by the HTML marker and will be updated in-place on future tokenade upgrades.\n\n{body}")
 }
 fn pointer() -> String {
     header("<!-- tokenade-scaffold -->\n## Project rules\nThe `tokenade` CLI is available globally. Its usage rules are loaded from this machine's agent config — if the Tokenade instruction is already in the context, do not open another copy.\n<!-- /tokenade-scaffold -->\n")

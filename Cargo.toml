@@ -20,7 +20,7 @@ members = [
 exclude = ["crates/tokenade-llama-sys", "competitors", "benchmarks/repos", "experiments"]
 
 [workspace.package]
-version = "2.0.3"
+version = "2.0.4"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pi-infected/tokenade"

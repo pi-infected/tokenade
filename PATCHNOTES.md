@@ -1,4 +1,9 @@
 # Tokenade — what's new
+## 2.0.4
+- A repeated `Read` of an unchanged file, and any `Read` Tokenade shrinks to a head slice, now gets its note or compacted view delivered. It was staged under the line limit the agent asked for, while the delivery hook looks it up under the shortened one, so the agent got the first 20 lines and nothing else (#6).
+- The rules file scaffold only touches what a marker proves is Tokenade's: the `<!-- tokenade-scaffold -->` block, the `<!-- tokenade:start -->` fence, and the intro of a file Tokenade created. Sections titled `## Commands`, `## Project rules`, `## Engineering principles` or `## Codebase exploration` in your `CLAUDE.md` / `AGENTS.md` are no longer removed (#7). Leftovers from 1.x outside those markers are no longer cleaned up automatically.
+- opencode 2: the plugin bridge loads again (opencode 2 expects an object default export), and folding keeps a shell result's structured `output` and its exit notice intact (#1).
+
 ## 2.0.3
 - After a successful `tokenade install` (or, if that run was not in a terminal, the first `tokenade dashboard` with saved tokens to show), one line says Tokenade is open source and links the GitHub repository. Shown once per machine, never when stdout is not a terminal or under CI, and `TOKENADE_NO_STAR_INVITE=1` turns it off. It makes no network call.
 

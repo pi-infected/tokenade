@@ -386,14 +386,19 @@ pub(crate) fn emit_read_compaction_inner(
     }
     if !read_flow_wants_legacy_deny() {
         let session_id = crate::hooks::session_id_of(parsed).unwrap_or("");
-        if stage_read_pending(session_id, file_path, offset, limit, &reason) {
-            // Respect an explicit smaller limit — a tiny slice request
-            // must not grow into a 20-line head.
-            let head = if limit > 0 {
-                limit.min(READ_HEAD_LINES)
-            } else {
-                READ_HEAD_LINES
-            };
+        // Respect an explicit smaller limit — a tiny slice request
+        // must not grow into a 20-line head.
+        let head = if limit > 0 {
+            limit.min(READ_HEAD_LINES)
+        } else {
+            READ_HEAD_LINES
+        };
+        // #6 — staged under the limit PostToolUse will SEE: Claude Code hands
+        // that hook the rewritten input (`limit: head`), not the caller's. Keyed
+        // on the caller's `limit`, every shrunk Read (`limit: 60` → 20, no limit
+        // → 20) missed its entry: the agent got the head slice and nothing
+        // else — a silent cut, while the reason promised content to follow.
+        if stage_read_pending(session_id, file_path, offset, head, &reason) {
             // S2 — Merge, don't reconstruct: start from the original
             // tool_input and override only limit/offset, so no param is ever
             // dropped in the rewrite. Defence in depth — S1 above already

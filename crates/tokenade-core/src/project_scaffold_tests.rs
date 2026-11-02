@@ -907,41 +907,6 @@ mod tests {
     }
 
     #[test]
-    fn retract_removes_legacy_unmarked_prose_via_marked_neighbour() {
-        let _home = crate::platform::ScratchHome::new("retract_legacy_");
-        // Append-era layering: legacy UNMARKED prose + a modern marked block
-        // in the same file. Retract only removes the marked block; restore
-        // wipes every owned heading then writes the current block. User
-        // prose outside those headings is kept.
-        let dir = tmpdir("legacy");
-        let legacy = "# Project rules for AI coding agents\n\n\
-                      Auto-scaffolded by tokenade on first MCP session.\n\n\
-                      ## Codebase exploration\nOld unmarked prose.\n\n\
-                      ## Engineering principles\nMore old prose.\n";
-        std::fs::write(
-            dir.join("CLAUDE.md"),
-            format!(
-                "{legacy}\n{}\n# User section\nkeep me\n",
-                super::scaffold_block(false)
-            ),
-        )
-        .unwrap();
-        assert_eq!(super::sync_gate_state(&dir, true), Some("retracted"));
-        let text = std::fs::read_to_string(dir.join("CLAUDE.md")).unwrap();
-        assert_eq!(text.matches(super::SCAFFOLD_MARKER).count(), 0);
-        assert!(text.contains("keep me"));
-        assert_eq!(super::sync_gate_state(&dir, false), Some("restored"));
-        let text = std::fs::read_to_string(dir.join("CLAUDE.md")).unwrap();
-        assert_single_block(&dir.join("CLAUDE.md"));
-        // Owned headings (Codebase exploration, …) are wiped regardless of
-        // body wording. User prose outside those headings is kept.
-        assert!(text.contains("keep me"));
-        assert!(!text.contains("## Codebase exploration"));
-        assert!(!text.contains("## Engineering principles"));
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
     fn ensure_after_manual_marker_deletion_while_retracted_stays_paused() {
         let _home = crate::platform::ScratchHome::new("ensure_after_manual_");
         // User deletes .tokenade/ (or the flag) while retracted → marker gone
@@ -1276,65 +1241,6 @@ mod tests {
         assert!(second.skipped, "second ensure must be a no-op: {second:?}");
     }
 
-    /// A binary upgrade does not necessarily open a project: the post-upgrade
-    /// refresh calls `ensure_global_rules` on its own. Same 1.1.18 shape
-    /// (lesson in the project + Grok-compat leftover) → one copy per agent,
-    /// leftovers emptied.
-    /// A paragraph of ours that lost its heading is still ours: the user's
-    /// `~/.claude/CLAUDE.md` carried six headless copies of the plain read
-    /// paragraph above the block, and every rewrite kept them as prose.
-    /// A copy stranded under the PREVIOUS wording is still ours: rewording the
-    /// image clause would otherwise have orphaned every copy users already had.
-    #[test]
-    fn a_stranded_paragraph_in_an_older_wording_is_removed_too() {
-        let home = crate::platform::ScratchHome::new("older_wording_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let claude_md = home.path().join(".claude").join("CLAUDE.md");
-        ensure_global_rules(Some(home.path()));
-        let written = std::fs::read_to_string(&claude_md).unwrap();
-        // The line AS 1.1.22 WROTE IT, copied from a real user file — not
-        // rebuilt from today's lists, which is how both this test and the
-        // cleanup drifted silently when `.doc` was added.
-        let old = "tokenade can read .pdf .docx .xlsx .xls .xlsb .pptx .odt .ods .odp .odg .epub .rtf .fb2 (and their flat-XML, macro-enabled and template variants) (extracted text), .mp4 .mkv .mov .webm .avi .mp3 .wav .m4a .flac .ogg .opus (and other common containers) (what the file is, plus a transcript when available) and .png .jpg .jpeg .gif .webp .bmp .tif .tiff .ico .tga .pnm .pbm .pgm .ppm .qoi .hdr — your own file reader cannot. Use:\n`tokenade read <file>` — the document as text";
-        std::fs::write(
-            &claude_md,
-            format!("{old}\n\n{old}\n\nmy own note\n\n{written}"),
-        )
-        .unwrap();
-        ensure_global_rules(Some(home.path()));
-        let body = std::fs::read_to_string(&claude_md).unwrap();
-        assert!(
-            !body.contains("— your own file reader cannot. Use:"),
-            "old copy kept:\n{body}"
-        );
-        assert!(body.contains("my own note"), "user prose lost:\n{body}");
-    }
-
-    #[test]
-    fn a_headless_paragraph_of_ours_outside_the_block_is_removed() {
-        let home = crate::platform::ScratchHome::new("headless_paragraph_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let claude_md = home.path().join(".claude").join("CLAUDE.md");
-        ensure_global_rules(Some(home.path()));
-        let written = std::fs::read_to_string(&claude_md).unwrap();
-        let plain = read_capability_line(false);
-        let headless: String = plain.lines().skip(1).collect::<Vec<_>>().join("\n");
-        let stacked = format!("{headless}\n\n{headless}\n\nmy own note\n\n{written}");
-        std::fs::write(&claude_md, &stacked).unwrap();
-
-        assert!(ensure_global_rules(Some(home.path())).contains(&claude_md));
-        let body = std::fs::read_to_string(&claude_md).unwrap();
-        assert!(
-            !body.contains("your own file reader cannot"),
-            "stranded copy kept:\n{body}"
-        );
-        assert!(body.contains("my own note"), "user prose lost:\n{body}");
-        assert!(
-            !ensure_global_rules(Some(home.path())).contains(&claude_md),
-            "a second pass must find nothing left to do"
-        );
-    }
-
     #[test]
     fn post_upgrade_refresh_writes_globals_without_a_project() {
         let home = crate::platform::ScratchHome::new("post_upgrade_globals_");
@@ -1666,344 +1572,6 @@ mod tests {
     }
 
     #[test]
-    fn heals_unmarked_versioned_debris_before_marked_block() {
-        let _home = crate::platform::ScratchHome::new("heals_unmarked_versi_");
-        // Real-world corruption (field audit 2026-07-11): pre-marker builds
-        // appended `## Tokenade rules (vN)` blocks on every version bump, so
-        // files carried v3 + duplicate v4 debris in FRONT of the marked block.
-        let root = tmp_root("heal_debris");
-        let target = root.join("CLAUDE.md");
-        let block = scaffold_block(false);
-        let corrupted = format!(
-            "# Project rules for AI coding agents\n\n\
-             Auto-scaffolded by tokenade on first MCP session.\n\n\
-             ## Tokenade rules (v3)\n\n\
-             - **Escape hatch when a compactor mangles output** you need verbatim: run `tokenade raw <cmd>`.\n\n\
-             ## Tokenade rules (v4)\n\n\n\
-             ## Tokenade rules (v4)\n\n\
-             - **Batch independent work into one turn — it's the biggest real token saving.**\n\n\
-             {block}"
-        );
-        std::fs::write(&target, &corrupted).unwrap();
-        assert_eq!(
-            write_scaffold_to(&root, &target, false),
-            Some(true),
-            "heal must rewrite"
-        );
-        let healed = std::fs::read_to_string(&target).unwrap();
-        assert!(
-            !healed.contains("## Tokenade rules (v"),
-            "debris left: {healed}"
-        );
-        assert_eq!(healed.matches(SCAFFOLD_MARKER).count(), 1);
-        assert!(
-            healed.contains("# Project rules for AI coding agents"),
-            "intro must survive"
-        );
-        // Idempotent: a second pass is a no-op.
-        assert_eq!(write_scaffold_to(&root, &target, false), Some(false));
-    }
-
-    #[test]
-    fn heals_markerless_debris_only_file_to_fresh_template() {
-        let _home = crate::platform::ScratchHome::new("heals_markerless_deb_");
-        // The worst observed shape: markers gone, headers orphaned (bodies
-        // stripped), tail sections duplicated — and NO marked block at all.
-        let root = tmp_root("heal_markerless");
-        let target = root.join("CLAUDE.md");
-        let corrupted = "\n\n## Tokenade rules (v3)\n\n\n## Tokenade rules (v4)\n\n\n\
-             Filtering or aggregating a large output? `tokenade exec --lang python --script '<code>'` runs it in a sandbox.\n\n\
-             ## Commands\n\n## Keep output lean\n\n\n\n## Commands\n\n## Keep output lean\n";
-        std::fs::write(&target, corrupted).unwrap();
-        assert_eq!(write_scaffold_to(&root, &target, false), Some(true));
-        let healed = std::fs::read_to_string(&target).unwrap();
-        assert!(
-            healed.starts_with("# Project rules for AI coding agents"),
-            "debris-only file becomes the fresh template: {healed}"
-        );
-        assert_eq!(healed.matches(SCAFFOLD_MARKER).count(), 1);
-        assert!(!healed.contains("## Tokenade rules (v"));
-    }
-
-    /// Real shape 2026-09-27: `~/.claude/CLAUDE.md` with no marker, two
-    /// lessons glued together (empty Search + Read "cannot" then Read
-    /// "extends"). An `ensure_global_rules` must leave only one, Claude's.
-    #[test]
-    fn lecture_heal_unmarked_stacked_lectures_in_claude_global_collapse_to_one() {
-        let home = crate::platform::ScratchHome::new("stacked_claude_lecture_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let claude_md = home.path().join(".claude").join("CLAUDE.md");
-        let stacked = "\
-@RTK.md
-
-## Searching the web
-## Explore code with the `tokenade` CLI (cheaper than reading whole files)
-Use these only when you don't yet know where code lives — if you know the path, open it directly:
-`tokenade map` (repo structure; `map <path>` for one subtree) · `skeleton <file…>` (signatures) · `query <symbol…>` (locate a symbol) · `impact <file…>` (dependents) · `semantic \"<query>\"` (search by meaning). They take MANY targets per call (`tokenade skeleton a.rs b.rs c.rs`) — batch in ONE turn.
-
-## Reading documents & media
-tokenade can read .pdf .docx — your own file reader cannot. Use:
-`tokenade read <file>` — the document as text
-`tokenade read <file> --prompt \"q1, q2\"` — only the passages answering your questions; several questions in ONE comma-separated call is the CHEAPEST option in tokens spent, answering each under its own heading in ONE round-trip instead of re-sending the context once per question.
-
-## Searching the web
-`tokenade search \"<query>\"` — one query, fanned out across several independent search engines, merged, deduped and ranked by cross-engine agreement. Returns title/url/snippet only, so it costs a fraction of reading a results page. Add `--json` for machine-readable output.
-Follow a result with `tokenade web <url>` to read the page itself.
-
-## Fetching or searching several things
-Do them in ONE call — `tokenade web <url1> <url2> …` / `tokenade search \"<q1>\" \"<q2>\" …` — they run concurrently, so you pay ONE round-trip instead of N and never re-send the context each extra turn would have re-sent.
-
-## Commands
-If you do not have tokenade hooks, use `tokenade wrap '<cmd>'` to wrap all your commands — `tokenade health` says whether they are INSTALLED, and names the fix when they are not, so you never have to guess. If there is an opportunity for compacting noisy output, tokenade will find it — and you will waste fewer tokens.
-An absolute path (`/usr/bin/git`) is intercepted exactly like `git` when hooks are installed; where interception goes through your PATH instead, only the bare name is seen — so prefer the bare name if you are not sure which you have.
-`wrap` keeps the exit code exactly, and MERGES stderr into stdout — the two streams are compacted as one. `tokenade wrap '''cmd''' 2>err.log` therefore writes an empty err.log; redirect from the wrapped command instead (`tokenade wrap '''cmd 2>err.log'''`).
-
-## Explore code with the `tokenade` CLI (cheaper than reading whole files)
-Use these only when you don't yet know where code lives — if you know the path, open it directly:
-`tokenade map` (repo structure; `map <path>` for one subtree) · `skeleton <file…>` (signatures) · `query <symbol…>` (locate a symbol) · `impact <file…>` (dependents) · `semantic \"<query>\"` (search by meaning). They take MANY targets per call (`tokenade skeleton a.rs b.rs c.rs`) — batch in ONE turn.
-
-## Reading documents & media
-tokenade extends your `Read` tool: reading .pdf .docx returns extracted text instead of failing on the binary; .mp4 .mkv are decoded for you — any image format you cannot display yourself is converted to PNG automatically. Just Read the path as usual.
-For a big document, asking beats reading it whole — `tokenade read <file> --prompt \"q1, q2\"` returns only the passages that answer, and putting several questions in ONE comma-separated call is the CHEAPEST option in tokens spent: each is answered under its own heading in ONE round-trip, instead of re-sending the context once per question.
-
-## Fetching or searching several things
-Do them in ONE call — `tokenade web <url1> <url2> …` / `tokenade search \"<q1>\" \"<q2>\" …` — they run concurrently, so you pay ONE round-trip instead of N and never re-send the context each extra turn would have re-sent.
-
-## Compute over data with `tokenade exec`
-`tokenade exec --lang python --script '<code>'` (also bash/sh/node/ruby/awk/jq/perl) runs a capped subprocess with a scrubbed env — your permissions, not a jail — and returns ONLY its stdout. Data you PIPE in reaches the script's stdin (`cmd | tokenade exec …`), so a big output is filtered where it is produced instead of entering your context. Use it to COMPUTE over data — filter/aggregate a large or structured output, pull facts across SEVERAL files, or apply one mechanical edit across many files (migration, find-replace) — in ONE script, not one command per item. It is NOT a file reader: to read content, use the parallel reads above, not `exec`. Keep scripts SHORT (aim ≤ ~20 lines): exec is for throwaway one-shot computation, not for code you will edit and iterate on — every script char is billed as output, and a long script usually means a simpler command (or a real file you Write once and run) does it cheaper. Long or quote-heavy script? `--script-file <path>` (or `--script -` on stdin) avoids shell quoting entirely.
-
-## Commands
-If you do not have tokenade hooks, use `tokenade wrap '<cmd>'` to wrap all your commands — `tokenade health` says whether they are INSTALLED, and names the fix when they are not, so you never have to guess. If there is an opportunity for compacting noisy output, tokenade will find it — and you will waste fewer tokens.
-An absolute path (`/usr/bin/git`) is intercepted exactly like `git` when hooks are installed; where interception goes through your PATH instead, only the bare name is seen — so prefer the bare name if you are not sure which you have.
-`wrap` keeps the exit code exactly, and MERGES stderr into stdout — the two streams are compacted as one. `tokenade wrap '''cmd''' 2>err.log` therefore writes an empty err.log; redirect from the wrapped command instead (`tokenade wrap '''cmd 2>err.log'''`).
-
-## Keep output lean
-Keep prose terse and code minimal — every token you write is billed as output.
-- **Prose:** answer directly — no preamble, recap, tool-call narration, summary, or emoji. Drop articles, filler (*just/really/basically/simply*) and hedging; fragments fine; short word over long.
-- **Output:** don't paste long raw output — quote the shortest decisive line. No decorative tables.
-- **Code:** write the least that works; reuse before adding (`query` / `skeleton` / `impact`, stdlib, platform feature — YAGNI).
-- **Verbatim:** keep code, identifiers, API/CLI names and error strings exact — never abbreviate or paraphrase. Keep the user's language.
-- **Correctness first:** fix root causes not symptoms, don't downgrade the algorithm, don't guess APIs/flags/versions — verify.
-- **Full prose where terseness could mislead:** security/data-loss warnings, irreversible-action confirmations, multi-step sequences.
-";
-        std::fs::write(&claude_md, stacked).unwrap();
-        let written = ensure_global_rules(Some(home.path()));
-        assert!(
-            written.iter().any(|p| p == &claude_md),
-            "stacked lecture must be rewritten: {written:?}"
-        );
-        let body = std::fs::read_to_string(&claude_md).unwrap();
-        assert_eq!(
-            body.matches("tokenade map").count(),
-            1,
-            "lecture still stacked:\n{body}"
-        );
-        assert_eq!(body.matches(SCAFFOLD_MARKER).count(), 1);
-        assert_eq!(body.matches(SCAFFOLD_END_MARKER).count(), 1);
-        assert!(body.contains("@RTK.md"), "user prefix lost:\n{body}");
-        assert!(
-            body.contains("extends your `Read` tool"),
-            "Claude's global must keep the hooked Read line:\n{body}"
-        );
-        assert!(
-            !body.contains("your own file reader cannot"),
-            "unhooked Read line must not stay next to the hooked one:\n{body}"
-        );
-        assert_eq!(
-            body.matches("## Searching the web").count(),
-            0,
-            "Claude hooks websearch: empty Search heading must not remain:\n{body}"
-        );
-        let again = ensure_global_rules(Some(home.path()));
-        assert!(
-            !again.iter().any(|p| p == &claude_md),
-            "second pass must leave CLAUDE.md alone: {again:?}"
-        );
-    }
-
-    /// Real shape 2026-09-28: the healer left a `## Keep output lean` /
-    /// "Keep prose terse." stub OUTSIDE the marker, and the complete
-    /// scaffold inside. Claude loads both.
-    #[test]
-    fn lecture_heal_truncated_keep_output_lean_stub_outside_marker_is_dropped() {
-        let home = crate::platform::ScratchHome::new("truncated_lean_stub_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let claude_md = home.path().join(".claude").join("CLAUDE.md");
-        let planted = format!(
-            "@RTK.md\n\
-             ## Keep output lean\n\
-             Keep prose terse.\n\
-             {}",
-            scaffold_block_for(crate::detect::Agent::ClaudeCode, false)
-        );
-        std::fs::write(&claude_md, planted).unwrap();
-        let written = ensure_global_rules(Some(home.path()));
-        assert!(
-            written.iter().any(|p| p == &claude_md),
-            "stub must be rewritten: {written:?}"
-        );
-        let body = std::fs::read_to_string(&claude_md).unwrap();
-        assert_eq!(
-            body.matches("## Keep output lean").count(),
-            1,
-            "truncated stub still present:\n{body}"
-        );
-        assert!(
-            !body.contains("Keep prose terse.\n"),
-            "one-line stub must go:\n{body}"
-        );
-        assert!(body.contains("@RTK.md"), "user prefix lost:\n{body}");
-        assert!(body.contains("Keep prose terse and code minimal"));
-    }
-
-    /// A heading we publish is ours even if the body never existed in a
-    /// shipped version. No fingerprint per wording.
-    #[test]
-    fn lecture_heal_unknown_body_under_owned_heading_is_wiped() {
-        let home = crate::platform::ScratchHome::new("unknown_body_wipe_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let claude_md = home.path().join(".claude").join("CLAUDE.md");
-        std::fs::write(
-            &claude_md,
-            "@RTK.md\n\n\
-             ## Explore code with the `tokenade` CLI (cheaper than reading whole files)\n\
-             this wording never existed in any shipped version\n\n\
-             # House rules\n\
-             keep me\n",
-        )
-        .unwrap();
-        let written = ensure_global_rules(Some(home.path()));
-        assert!(
-            written.iter().any(|p| p == &claude_md),
-            "unknown body under our heading must be rewritten: {written:?}"
-        );
-        let body = std::fs::read_to_string(&claude_md).unwrap();
-        assert!(
-            !body.contains("this wording never existed"),
-            "owned heading left an unknown body:\n{body}"
-        );
-        assert!(body.contains("keep me"), "user prose lost:\n{body}");
-        assert!(body.contains("@RTK.md"), "user prefix lost:\n{body}");
-        assert!(body.contains("# House rules"), "user heading lost:\n{body}");
-        assert_eq!(body.matches("tokenade map").count(), 1);
-        assert_eq!(body.matches("## Explore code").count(), 1);
-        assert_eq!(body.matches(SCAFFOLD_MARKER).count(), 1);
-    }
-
-    /// `~/CLAUDE.md` is not Claude Code's global address
-    /// (`~/.claude/CLAUDE.md`). A Tokenade pointer + an empty `## Project
-    /// rules` heading = leftover; we remove it, not a second copy.
-    #[test]
-    fn lecture_heal_leftover_home_claude_md_pointer_is_removed() {
-        let home = crate::platform::ScratchHome::new("leftover_home_claude_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        let leftover = home.path().join("CLAUDE.md");
-        std::fs::write(
-            &leftover,
-            format!("\n\n## Project rules\n\n{}", pointer_block()),
-        )
-        .unwrap();
-        let written = ensure_global_rules(Some(home.path()));
-        assert!(
-            written.iter().any(|p| p == &leftover),
-            "leftover ~/CLAUDE.md must be touched: {written:?}"
-        );
-        assert!(
-            !leftover.exists() || {
-                let b = std::fs::read_to_string(&leftover).unwrap_or_default();
-                !b.contains("## Project rules") && !b.contains("tokenade")
-            },
-            "leftover still on disk: {}",
-            leftover
-                .exists()
-                .then(|| std::fs::read_to_string(&leftover).unwrap_or_default())
-                .unwrap_or_default()
-        );
-    }
-
-    /// cwd = `crates/tokenade-cli`: Claude concatenates this CLAUDE.md /
-    /// AGENTS.md with `~/.claude/CLAUDE.md`. A complete lesson here is a
-    /// duplicate. `ensure_global_rules` + `heal_project_lectures` = the CLI path.
-    #[test]
-    fn lecture_heal_nested_crate_full_lectures_are_removed() {
-        let home = crate::platform::ScratchHome::new("nested_crate_lecture_");
-        std::fs::create_dir_all(home.path().join(".claude")).unwrap();
-        std::fs::create_dir_all(home.path().join(".codex")).unwrap();
-        let root = tmp_root("nested-crate-lecture");
-        let crate_dir = root.join("crates").join("tokenade-cli");
-        std::fs::create_dir_all(&crate_dir).unwrap();
-        let full = scaffold_block_for(crate::detect::Agent::ClaudeCode, false);
-        std::fs::write(crate_dir.join("CLAUDE.md"), &full).unwrap();
-        std::fs::write(crate_dir.join("AGENTS.md"), &full).unwrap();
-        std::fs::create_dir_all(root.join(".claude")).unwrap();
-        std::fs::write(
-            root.join(".claude").join("CLAUDE.md"),
-            "<!-- tokenade:start -->\n## Tokenade is installed\n`tokenade map` leftover fence\n",
-        )
-        .unwrap();
-        std::fs::write(
-            home.path().join(".claude").join("CLAUDE.md"),
-            format!("@RTK.md\n## Keep output lean\nKeep prose terse.\n{full}"),
-        )
-        .unwrap();
-        std::fs::write(
-            home.path().join("CLAUDE.md"),
-            format!("\n\n## Project rules\n\n{}", pointer_block()),
-        )
-        .unwrap();
-
-        let _ = ensure_global_rules(Some(home.path()));
-        let project_touched = heal_project_lectures(&root);
-        assert!(
-            project_touched.iter().any(|p| p.ends_with("CLAUDE.md")),
-            "nested CLAUDE.md must be spliced: {project_touched:?}"
-        );
-
-        // Nothing but the lesson: both files disappear.
-        for name in ["CLAUDE.md", "AGENTS.md"] {
-            assert!(!crate_dir.join(name).exists(), "{name} survived as a copy");
-        }
-        let nested_fence = root.join(".claude").join("CLAUDE.md");
-        let fence_body = if nested_fence.exists() {
-            std::fs::read_to_string(&nested_fence).unwrap()
-        } else {
-            String::new()
-        };
-        assert!(
-            !fence_body.contains("tokenade map") && !fence_body.contains("tokenade:start"),
-            "repo .claude/CLAUDE.md still a fence:\n{fence_body}"
-        );
-        let global =
-            std::fs::read_to_string(home.path().join(".claude").join("CLAUDE.md")).unwrap();
-        assert_eq!(global.matches("## Keep output lean").count(), 1);
-        assert!(
-            !global.contains("Keep prose terse.\n"),
-            "stub left:\n{global}"
-        );
-        assert!(global.contains("@RTK.md"));
-        let leftover = home.path().join("CLAUDE.md");
-        assert!(
-            !leftover.exists() || {
-                let b = std::fs::read_to_string(&leftover).unwrap();
-                !b.contains("tokenade") && !b.contains("## Project rules")
-            },
-            "home CLAUDE.md leftover remains"
-        );
-        let again = heal_project_lectures(&root);
-        assert!(
-            again.is_empty(),
-            "second heal_project_lectures must be a no-op: {again:?}"
-        );
-        let again_g = ensure_global_rules(Some(home.path()));
-        assert!(
-            !again_g
-                .iter()
-                .any(|p| p.ends_with(".claude/CLAUDE.md") || p.ends_with("CLAUDE.md")),
-            "second ensure_global_rules must not rewrite: {again_g:?}"
-        );
-    }
-
-    #[test]
     fn global_lecture_matches_the_agent_that_reads_it() {
         let home = crate::platform::ScratchHome::new("agent_specific_lecture_");
         for dir in [".claude", ".codex"] {
@@ -2133,26 +1701,6 @@ Keep prose terse and code minimal — every token you write is billed as output.
         assert!(claude.contains("## Keep output lean") && claude.contains("tokenade map"));
     }
 
-    /// A global is not a project file: no "Project rules for AI coding agents
-    /// / Auto-scaffolded" header, even on an already up-to-date global that
-    /// carried it (written by 1.1.19).
-    #[test]
-    fn a_global_carries_no_project_header() {
-        let home = crate::platform::ScratchHome::new("global_no_header_");
-        std::fs::create_dir_all(home.path().join(".codex")).unwrap();
-        let codex = home.path().join(".codex").join("AGENTS.md");
-        let _ = ensure_global_rules(Some(home.path()));
-        let fresh = std::fs::read_to_string(&codex).unwrap();
-        assert!(fresh.starts_with(SCAFFOLD_MARKER), "{fresh}");
-        std::fs::write(&codex, format!("# Project rules for AI coding agents\n\nAuto-scaffolded by tokenade on first MCP session.\n\n{fresh}")).unwrap();
-        let _ = ensure_global_rules(Some(home.path()));
-        assert_eq!(std::fs::read_to_string(&codex).unwrap(), fresh);
-        assert!(
-            ensure_global_rules(Some(home.path())).is_empty(),
-            "second pass no-op"
-        );
-    }
-
     /// The 1.1.19 pointer in `.cursorrules` / `GEMINI.md`, and in the
     /// `CLAUDE.md` of a parent folder Claude loads while walking up: the CLI
     /// healing removes them, without touching a user's file.
@@ -2177,19 +1725,23 @@ Keep prose terse and code minimal — every token you write is billed as output.
         ] {
             std::fs::write(&p, &pointer).unwrap();
         }
-        // An orphaned heading an earlier healing left behind, with no marker.
+        // No marker: not provably ours, so it stays (#7 — `## Project rules`
+        // is a title users write too).
         std::fs::write(parent.join("CLAUDE.local.md"), "\n\n## Project rules").unwrap();
         std::fs::write(parent.join("AGENTS.md"), "# Mine\n").unwrap();
         let healed = heal_project_lectures(&root);
-        assert_eq!(healed.len(), 4, "{healed:?}");
+        assert_eq!(healed.len(), 3, "{healed:?}");
         for p in [
             root.join(".cursorrules"),
             root.join("GEMINI.md"),
             parent.join("CLAUDE.md"),
-            parent.join("CLAUDE.local.md"),
         ] {
             assert!(!p.exists(), "{} survived", p.display());
         }
+        assert_eq!(
+            std::fs::read_to_string(parent.join("CLAUDE.local.md")).unwrap(),
+            "\n\n## Project rules"
+        );
         assert_eq!(
             std::fs::read_to_string(parent.join("AGENTS.md")).unwrap(),
             "# Mine\n"
@@ -2388,31 +1940,6 @@ Keep prose terse and code minimal — every token you write is billed as output.
         );
     }
 
-    /// Cursor's `.mdc`: frontmatter closed on its own line, no project header
-    /// — including on a file 1.1.19 had written as
-    /// `---# Project rules for AI coding agents` (end of frontmatter glued on).
-    #[test]
-    fn cursor_mdc_keeps_a_closed_frontmatter() {
-        let home = crate::platform::ScratchHome::new("cursor_mdc_");
-        std::fs::create_dir_all(home.path().join(".cursor")).unwrap();
-        let mdc = home
-            .path()
-            .join(".cursor")
-            .join("rules")
-            .join("tokenade.mdc");
-        let _ = ensure_global_rules(Some(home.path()));
-        let fresh = std::fs::read_to_string(&mdc).unwrap();
-        assert!(
-            fresh.starts_with("---\n")
-                && fresh.contains("alwaysApply: true\n---\n\n<!-- tokenade-scaffold -->"),
-            "{fresh}"
-        );
-        let broken = fresh.replacen("---\n\n<!-- tokenade-scaffold -->", "---# Project rules for AI coding agents\n\nAuto-scaffolded by tokenade on first MCP session.\n\n<!-- tokenade-scaffold -->", 1);
-        std::fs::write(&mdc, broken).unwrap();
-        let _ = ensure_global_rules(Some(home.path()));
-        assert_eq!(std::fs::read_to_string(&mdc).unwrap(), fresh);
-    }
-
     /// Without a prompt hook, the rules file is the style's only channel.
     /// Since the lesson lives in the global, the preamble must be there — the
     /// 1.1.19 compat gate saw five `sobriety` cells regress without it.
@@ -2472,9 +1999,8 @@ Keep prose terse and code minimal — every token you write is billed as output.
 
     #[test]
     fn heal_never_drops_user_content_in_owned_looking_section() {
-        // A heading we publish (`## Commands`) is ours even if the body
-        // looks like a note. User prose lives under a heading we do not
-        // write — that is what survives a wipe-then-rewrite.
+        // `## Commands` is a heading users write too (#7): with a body that
+        // is not ours, outside our wrapper, it is the user's and survives.
         let _home = crate::platform::ScratchHome::new("heal_user_content_");
         let root = tmp_root("heal_user_content");
         let target = root.join("AGENTS.md");
@@ -2484,11 +2010,11 @@ Keep prose terse and code minimal — every token you write is billed as output.
              ## Deploy notes\nkeep the pipeline green\n\n{block}"
         );
         std::fs::write(&target, &content).unwrap();
-        assert_eq!(write_scaffold_to(&root, &target, false), Some(true));
+        assert_eq!(write_scaffold_to(&root, &target, false), Some(false), "nothing of ours to heal");
         let after = std::fs::read_to_string(&target).unwrap();
         assert!(
-            !after.contains("My own deploy notes: make deploy-prod"),
-            "owned heading must wipe its body:\n{after}"
+            after.contains("## Commands\nMy own deploy notes: make deploy-prod"),
+            "user section under a generic heading lost:\n{after}"
         );
         assert!(
             after.contains("keep the pipeline green"),
@@ -2497,6 +2023,47 @@ Keep prose terse and code minimal — every token you write is billed as output.
         assert_eq!(after.matches(SCAFFOLD_MARKER).count(), 1);
     }
 
+
+    /// #7: a project file Tokenade never wrote keeps its `## Commands`,
+    /// `## Project rules`, `## Engineering principles`, `## Codebase
+    /// exploration` sections — with the lesson global (strip path) or not
+    /// (block path).
+    #[test]
+    fn ensure_keeps_user_sections_under_generic_headings() {
+        let cases: &[(&str, &str, &[&str])] = &[
+            (
+                "CLAUDE.md",
+                "# CLAUDE.md\n\nGuidance for this repo.\n\n## Commands\n\n```bash\nuv sync --extra dev\nuv run pytest\n```\n\nRun `prek run --all-files` before finishing.\n\n## Architecture\n\n- `cli.py` is the entry point.\n",
+                &["## Commands", "uv sync --extra dev", "prek run --all-files", "## Architecture"],
+            ),
+            (
+                "AGENTS.md",
+                "# AGENTS.md\n\n## Project rules\n\nNever commit `.env` files.\n\n## Engineering principles\n\nPrefer the standard library.\n\n## Codebase exploration\n\nStart from `src/main.rs`.\n\n## Testing\n\n`cargo test` must pass.\n",
+                &["## Project rules", "Never commit `.env` files.", "## Engineering principles", "Prefer the standard library.", "## Codebase exploration", "Start from `src/main.rs`.", "## Testing"],
+            ),
+        ];
+        for global in [true, false] {
+            let home = crate::platform::ScratchHome::new("generic_heading_");
+            if global {
+                for agent in [".claude", ".codex"] {
+                    std::fs::create_dir_all(home.path().join(agent)).unwrap();
+                }
+            }
+            for (name, body, kept) in cases {
+                let root = tmp_root(&format!("generic_heading_{global}_{}", name.replace('.', "_")));
+                let target = root.join(name);
+                std::fs::write(&target, body).unwrap();
+                ensure(&root);
+                let after = std::fs::read_to_string(&target).unwrap();
+                for k in *kept {
+                    assert!(after.contains(k), "global={global} {name}: lost {k:?}:\n{after}");
+                }
+                if global {
+                    assert_eq!(&after, body, "global={global} {name}: file touched");
+                }
+            }
+        }
+    }
     #[test]
     fn scaffold_block_plain_strips_markers_keeps_rules() {
         let plain = scaffold_block_plain();
@@ -2764,78 +2331,6 @@ Keep prose terse and code minimal — every token you write is billed as output.
         );
     }
 
-    #[test]
-    fn strips_legacy_unmarked_prose_above_marker_block() {
-        let _home = crate::platform::ScratchHome::new("strips_legacy_unmarked");
-        // Per-subcrate AGENTS.md files scaffolded under the pre-marker
-        // era ended up carrying BOTH a legacy plain-prose rules
-        // section AND the modern marker-wrapped v3 block. Every
-        // session loads the same rules twice. The cleanup must evict
-        // the legacy prose without disturbing the marker block or any
-        // user content. Hand-edits MUST survive.
-        let root = tmp_root("strip_legacy_unmarked");
-        std::fs::create_dir_all(root.join(".tokenade")).unwrap();
-        // Older flag forces a re-run.
-        std::fs::write(
-            root.join(".tokenade").join("scaffold.flag"),
-            "version: 5\nscaffolded: AGENTS.md\n",
-        )
-        .unwrap();
-        let block = scaffold_block(false);
-        let legacy_prose = "# Project rules for AI coding agents\n\n\
-            Auto-scaffolded by tokenade on first MCP session. Safe to edit or replace; this file is not regenerated.\n\n\
-            ## Codebase exploration\n\n\
-            - **Default to tokenade MCP tools** for codebase questions: foo bar.\n\
-            - Fall back to `grep` / `find` only when the query genuinely doesn't fit.\n\
-            - This applies to **subagents you spawn** too.\n\n\
-            ## Engineering principles\n\n\
-            - **Fix root causes, not symptoms.** Before patching, ask what mechanism.\n\
-            - For noisy shell commands, route through `tokenade wrap '<cmd>'`.\n\n";
-        let file = format!("{legacy_prose}{block}");
-        std::fs::write(root.join("AGENTS.md"), &file).unwrap();
-        ensure(&root);
-        let after = std::fs::read_to_string(root.join("AGENTS.md")).unwrap();
-        assert!(
-            !after.contains("## Codebase exploration"),
-            "legacy '## Codebase exploration' must be stripped, got:\n{after}"
-        );
-        assert!(
-            !after.contains("## Engineering principles"),
-            "legacy '## Engineering principles' must be stripped, got:\n{after}"
-        );
-        assert!(
-            !after.contains("this file is not regenerated"),
-            "legacy intro line must be stripped"
-        );
-        assert!(after.contains(SCAFFOLD_MARKER), "marker block preserved");
-        // Content-shape-agnostic: pin a stable CLI command from the block,
-        // not the block title/version, so scaffold rewrites don't break
-        // this strip-logic test.
-        assert!(
-            after.contains("tokenade map"),
-            "current rules block content preserved"
-        );
-
-        // Hand-edits in the prefix → leave the whole prefix alone.
-        let root2 = tmp_root("strip_preserves_user_edits");
-        std::fs::create_dir_all(root2.join(".tokenade")).unwrap();
-        std::fs::write(
-            root2.join(".tokenade").join("scaffold.flag"),
-            "version: 5\nscaffolded: AGENTS.md\n",
-        )
-        .unwrap();
-        let user_mix =
-            format!("{legacy_prose}\n## My team rules\n\n- Always squash on merge.\n\n{block}");
-        std::fs::write(root2.join("AGENTS.md"), &user_mix).unwrap();
-        ensure(&root2);
-        let after2 = std::fs::read_to_string(root2.join("AGENTS.md")).unwrap();
-        assert!(
-            after2.contains("## My team rules"),
-            "user content must survive when prefix mixes legacy + user prose"
-        );
-        assert!(after2.contains("Always squash on merge."));
-    }
-
     /// `TOKENADE_NO_WEBSEARCH=1`: the rules no longer send the agent to
     /// `tokenade search`; page fetching stays.
     #[test]
@@ -2854,4 +2349,92 @@ Keep prose terse and code minimal — every token you write is billed as output.
         assert!(off.contains("tokenade web <url1>"));
         assert!(render_block(false, false, false, true).contains("tokenade search"));
     }
+
+    // ── 2.x: only a marker proves a region is Tokenade's ──────────────────
+
+    /// Even our OWN titles, without a marker, are the user's: copied from a
+    /// blog post, kept after an uninstall, or written independently.
+    #[test]
+    fn unmarked_tokenade_titles_are_left_alone() {
+        let user = "# Mine\n\n\
+            ## Explore code with the `tokenade` CLI (cheaper than reading whole files)\n\
+            my own notes on tokenade map\n\n\
+            ## Keep output lean\nshort answers\n\n\
+            ## Tokenade rules (v3)\nkept\n\n\
+            ## Commands\nmake test\n";
+        let block = scaffold_block(false);
+        let out = write::apply_scaffold_block(Some(user), &block).unwrap();
+        assert!(out.starts_with(user.trim_end()), "user text changed:\n{out}");
+        assert_eq!(out.matches(SCAFFOLD_MARKER).count(), 1);
+        assert_eq!(write::apply_scaffold_block(Some(&out), &block), None, "not idempotent");
+    }
+
+    /// A refresh replaces the marked block and only it — the user's text on
+    /// both sides, `## Commands` included, comes through byte for byte.
+    #[test]
+    fn refresh_touches_only_the_marked_block() {
+        let old = format!(
+            "# Mine\n\n## Commands\nuv run pytest\n\n\
+             {SCAFFOLD_MARKER}\n## Explore code\nan older wording\n{SCAFFOLD_END_MARKER}\n\n\
+             ## Project rules\nNever commit `.env`.\n"
+        );
+        let block = scaffold_block(false);
+        let out = write::apply_scaffold_block(Some(&old), &block).unwrap();
+        assert!(!out.contains("an older wording"), "{out}");
+        assert!(out.contains(block.trim()), "{out}");
+        assert!(out.starts_with("# Mine\n\n## Commands\nuv run pytest\n"), "{out}");
+        assert!(out.trim_end().ends_with("## Project rules\nNever commit `.env`."), "{out}");
+        assert_eq!(write::apply_scaffold_block(Some(&out), &block), None);
+    }
+
+    /// An opening marker with no closing one: only its line goes. What
+    /// follows cannot be proven ours, so it is kept.
+    #[test]
+    fn a_lone_opening_marker_drops_only_its_line() {
+        let text = format!("# Mine\n\n{SCAFFOLD_MARKER}\n## Commands\nmake deploy\n");
+        let (pre, post, found) = write::take_user_sides(&text);
+        assert!(found);
+        assert_eq!(format!("{pre}{post}"), "# Mine\n\n## Commands\nmake deploy\n");
+        let fence = format!("x\n{OLD_CLAUDE_FENCE_START}\nmine\n");
+        let (pre, post, _) = write::take_user_sides(&fence);
+        assert_eq!(format!("{pre}{post}"), "x\nmine\n");
+    }
+
+    /// The `<!-- tokenade:start -->` fence the 2.x install writes is a marker
+    /// too: removed with its body when closed, only its line otherwise.
+    #[test]
+    fn old_fence_is_stripped_only_within_its_bounds() {
+        let root = tmp_root("fence_bounds");
+        let closed = root.join("closed.md");
+        std::fs::write(
+            &closed,
+            format!("mine\n\n{OLD_CLAUDE_FENCE_START}\nours\n{OLD_CLAUDE_FENCE_END}\n\nafter\n"),
+        )
+        .unwrap();
+        assert!(strip_old_claude_md_fence(&closed));
+        assert_eq!(std::fs::read_to_string(&closed).unwrap(), "mine\n\nafter\n");
+        let open = root.join("open.md");
+        std::fs::write(&open, format!("mine\n{OLD_CLAUDE_FENCE_START}\n## Commands\nkeep\n")).unwrap();
+        assert!(strip_old_claude_md_fence(&open));
+        let left = std::fs::read_to_string(&open).unwrap();
+        assert!(left.contains("## Commands\nkeep") && !left.contains("tokenade:start"), "{left}");
+    }
+
+    /// A file Tokenade created (intro + block) is recognised whole: retract
+    /// removes it, and a user line added to it keeps it on disk.
+    #[test]
+    fn a_file_we_created_is_ours_whole_and_only_whole() {
+        let _home = crate::platform::ScratchHome::new("created_whole_");
+        let root = tmp_root("created_whole");
+        ensure(&root);
+        let agents = root.join("AGENTS.md");
+        let text = std::fs::read_to_string(&agents).expect("ensure creates AGENTS.md");
+        assert!(text.starts_with("# Project rules for AI coding agents"), "{text}");
+        let (pre, post, found) = write::take_user_sides(&text);
+        assert!(found && pre.trim().is_empty() && post.trim().is_empty(), "{pre}|{post}");
+        let with_user = format!("{text}\n## Commands\nmake test\n");
+        let (_, post, _) = write::take_user_sides(&with_user);
+        assert_eq!(post.trim(), "## Commands\nmake test");
+    }
 }
+

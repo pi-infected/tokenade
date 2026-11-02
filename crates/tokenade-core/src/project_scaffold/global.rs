@@ -230,13 +230,7 @@ pub fn heal_project_lectures(root: &Path) -> Vec<PathBuf> {
         let Ok(existing) = std::fs::read_to_string(&path) else {
             continue;
         };
-        if !existing.contains(SCAFFOLD_MARKER)
-            && !existing.contains("tokenade map")
-            && !existing.contains(OLD_CLAUDE_FENCE_START)
-            && !existing.contains("## Explore code")
-            && !existing.contains("## Keep output lean")
-            && !leftover_is_wrapper_only(&existing)
-        {
+        if !existing.contains(SCAFFOLD_MARKER) && !existing.contains(OLD_CLAUDE_FENCE_START) {
             continue;
         }
         let note = path.file_name().and_then(|n| n.to_str()) != Some("CLAUDE.md");
@@ -255,11 +249,10 @@ pub(crate) fn strip_old_claude_md_fence(path: &Path) -> bool {
     let Some(start) = existing.find(OLD_CLAUDE_FENCE_START) else {
         return false;
     };
-    // Without `<!-- tokenade:end -->` the 1.1.18 fence took up the rest of
-    // the file (the real shape of this repo's `.claude/CLAUDE.md`).
+    // Without its closing marker, only the opening line is provably ours.
     let end = match existing.find(OLD_CLAUDE_FENCE_END) {
         Some(end_at) if end_at >= start => end_at + OLD_CLAUDE_FENCE_END.len(),
-        _ => existing.len(),
+        _ => start + OLD_CLAUDE_FENCE_START.len(),
     };
     let prefix = existing[..start].trim_end();
     let suffix = existing[end..].trim_start_matches('\n');
@@ -290,7 +283,7 @@ pub(crate) fn agent_has_global_lecture(agent: Option<Agent>, home: &Path) -> boo
 pub(crate) fn file_has_lecture(path: &Path) -> bool {
     std::fs::read_to_string(path)
         .ok()
-        .is_some_and(|s| s.contains("tokenade map"))
+        .is_some_and(|s| s.contains(SCAFFOLD_MARKER))
 }
 
 /// Presence: a global is only written if the agent IS on the machine.
@@ -416,7 +409,7 @@ fn has_user_content(path: &Path) -> bool {
         return false;
     };
     let rest = without_marked_block(&text).unwrap_or(text);
-    !rest.trim().is_empty() && !leftover_is_wrapper_only(&rest) && !rest.contains("tokenade map")
+    !rest.trim().is_empty() && !leftover_is_wrapper_only(&rest)
 }
 
 /// Removes the marked block from every known global. A file left empty →
@@ -458,35 +451,16 @@ pub(crate) fn strip_leftover(path: &Path) -> bool {
     let Ok(existing) = std::fs::read_to_string(path) else {
         return stripped;
     };
-    if leftover_is_wrapper_only(&existing)
-        || (existing.contains("tokenade map") && existing.contains("Auto-scaffolded by tokenade"))
-    {
+    if leftover_is_wrapper_only(&existing) {
         return remove_with_sidecar(path) || stripped;
     }
     stripped
 }
 
+/// Only our markers and intro remain — nothing of the user's.
 fn leftover_is_wrapper_only(s: &str) -> bool {
-    let mut saw_ours = false;
-    for line in s.lines() {
-        let t = line.trim();
-        if t.is_empty() {
-            continue;
-        }
-        if t == "# Project rules for AI coding agents"
-            || t == "## Project rules"
-            || t == SCAFFOLD_MARKER
-            || t == SCAFFOLD_END_MARKER
-            || t.starts_with("Auto-scaffolded by tokenade")
-            || t.starts_with("The `tokenade` CLI is available globally")
-            || t.contains("if the Tokenade instruction is already in the context")
-        {
-            saw_ours = true;
-            continue;
-        }
-        return false;
-    }
-    saw_ours
+    let (pre, post, found) = super::write::take_user_sides(s);
+    found && pre.trim().is_empty() && post.trim().is_empty()
 }
 
 fn strip_marked_block(path: &Path) -> bool {
