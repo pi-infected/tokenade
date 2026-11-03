@@ -4263,7 +4263,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tk-agents"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "flate2",
  "fs2",
@@ -4279,7 +4279,7 @@ dependencies = [
 
 [[package]]
 name = "tk-base"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "base64 0.22.1",
  "chardetng",
@@ -4302,7 +4302,7 @@ dependencies = [
 
 [[package]]
 name = "tk-fold"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "image",
  "regex",
@@ -4314,7 +4314,7 @@ dependencies = [
 
 [[package]]
 name = "tk-formats"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "base64 0.22.1",
  "encoding_rs",
@@ -4327,7 +4327,7 @@ dependencies = [
 
 [[package]]
 name = "tokenade-bench"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "regex",
  "serde",
@@ -4338,7 +4338,7 @@ dependencies = [
 
 [[package]]
 name = "tokenade-cli"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "base64 0.22.1",
  "fs2",
@@ -4358,7 +4358,7 @@ dependencies = [
 
 [[package]]
 name = "tokenade-core"
-version = "2.0.5"
+version = "2.0.6"
 dependencies = [
  "base64 0.22.1",
  "bm25",

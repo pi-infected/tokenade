@@ -104,6 +104,7 @@ pub(crate) fn peel_leading_cd_for(cmd: &str, payload_kind: PeelPayload) -> Optio
 }
 mod exclusions;
 mod shell_chain;
+pub(crate) mod worktree_git;
 pub(crate) use exclusions::*;
 pub(crate) use shell_chain::*;
 
@@ -422,6 +423,33 @@ pub(crate) fn handle_bash_pretool(parsed: &serde_json::Value, started: std::time
     let exe = wrap_exe_token(&exe);
     // Chain-aware rewrite (Axe 2): when the command is composed of
     // multiple top-level segments joined by `&&` / `||` / `;`, wrap
+    // #8: inside an isolated worktree, git must not be a `tokenade` operand.
+    if worktree_git::in_isolated_worktree(parsed) && worktree_git::mentions_git(cmd) {
+        let Some(piped) = worktree_git::git_pipe_form(cmd, &exe, parsed) else {
+            tokenade_core::debug_log::log(
+                "hookwrap-pretool",
+                "bash_excluded",
+                serde_json::json!({
+                    "prog": prog,
+                    "reason": "isolated-worktree-git",
+                    "elapsed_ms": started.elapsed().as_millis() as u64,
+                }),
+            );
+            return 0;
+        };
+        println!(
+            "{}",
+            serde_json::json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "tokenade auto-wrap for compaction",
+                    "updatedInput": updated_input(parsed, &piped)
+                }
+            })
+        );
+        return 0;
+    }
     let rewritten = match rewrite_for_wrap(cmd, &exe, parsed, &prog, started, gates_deferred) {
         Ok(r) => r,
         Err(rc) => return rc,

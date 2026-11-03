@@ -1908,3 +1908,82 @@ fn e2e_a_shrunk_read_delivers_its_staged_context() {
         "staged note not delivered:\n{out}\n{err}"
     );
 }
+
+/// #8: in a Claude Code worktree-isolated agent, git must never be an operand
+/// of `tokenade` (Claude Code refuses the call), yet its output still folds.
+#[cfg(unix)]
+#[test]
+fn e2e_git_in_an_isolated_worktree_runs_plainly_and_still_folds() {
+    let h = TempHome::new("worktree-git");
+    let wt = "/repo/.claude/worktrees/agent-1";
+    let pre = |cmd: &str| {
+        let p = serde_json::json!({
+            "hook_event_name": "PreToolUse", "session_id": "wt-1", "agent_id": "a1",
+            "tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": wt,
+        });
+        let (out, _err, code) = run_hook(&["hookwrap-pretool"], h.path(), &p.to_string());
+        assert_eq!(code, 0);
+        out
+    };
+    let rewritten = |cmd: &str| -> String {
+        let out = pre(cmd);
+        let v: serde_json::Value = serde_json::from_str(&out).expect(&out);
+        v["hookSpecificOutput"]["updatedInput"]["command"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let run = |cmd: &str| {
+        let mut c = Command::new("bash");
+        // The hook names the binary as the suite spawned it: workspace-relative.
+        c.arg("-c").arg(cmd);
+        e2e_env(&mut c, h.path())
+            .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."))
+            .output()
+            .unwrap()
+    };
+
+    let pending = h.path().join(".tokenade/read-pending");
+    let staged = || {
+        std::fs::read_dir(&pending)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|e| e.file_name().to_string_lossy().starts_with("filterargv-"))
+    };
+    let cmd = rewritten("git log --oneline -3");
+    assert!(staged());
+    assert!(
+        cmd.starts_with("set -o pipefail; git log --oneline -3 2>&1 | "),
+        "{cmd}"
+    );
+    let after_git = &cmd[cmd.find(" | ").unwrap()..];
+    assert!(
+        !after_git.contains("git") && !cmd.contains(" wrap "),
+        "{cmd}"
+    );
+    let out = run(&cmd);
+    assert!(
+        out.status.success(),
+        "{cmd}\n{:?}\n{}",
+        out.status,
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout).lines().count(), 3);
+    // `filter` received the git argv: the staged copy was consumed.
+    assert!(!staged());
+
+    // git's failure is the call's failure, as under `wrap`.
+    assert!(!run(&rewritten("git nosuchsubcommand")).status.success());
+
+    // Shapes the pipe form does not cover run unwrapped, never wrapped.
+    for cmd in [
+        "cd /tmp && git status",
+        "git log | head -2",
+        "ls; /usr/bin/git status",
+    ] {
+        assert!(pre(cmd).trim().is_empty(), "{cmd:?} was rewritten");
+    }
+    // Everything else in the worktree is wrapped as usual.
+    assert!(rewritten("ls -la").contains(" wrap 'ls -la'"));
+}

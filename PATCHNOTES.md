@@ -1,4 +1,8 @@
 # Tokenade — what's new
+## 2.0.6
+- Claude Code: `git` works again in subagents isolated in a worktree (`.claude/worktrees/…`). Claude Code refuses a command where git is an argument of another program, which `tokenade wrap 'git …'` was. There, a plain git command now runs as written and its output is piped into `tokenade filter`, so it is still compacted; a chain or pipe that involves git runs unwrapped (#8).
+- The SessionStart `CLAUDE.md` dedup no longer compares a file with itself when two cascade paths lead to it (a symlinked `$CLAUDE_CONFIG_DIR/CLAUDE.md`, a dotfile repo, a symlinked project), which stripped every user line but the headings. Files are now identified by their real path. `audit-claude-md --compress` also writes through a symlink instead of replacing it with a copy (#9).
+
 ## 2.0.5
 - opencode 2: the plugin bridge now resets the savings ledger on the 2.x compaction event (`session.compaction.ended`, `event.data.sessionID`) and folds a structured shell `output` when the host's `result.content` is empty. Both were silent no-ops: the bridge listened for 1.x's removed `session.compacted` event, and accepted only a string `output`.
 

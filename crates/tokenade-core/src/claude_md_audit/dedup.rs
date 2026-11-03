@@ -268,11 +268,7 @@ pub fn apply_dedup_entries_opts(
 /// --apply` CLI. The unattended SessionStart hook uses
 /// [`apply_dedup_exact`] instead (exact-only, see its doc).
 pub fn apply_dedup(start: &Path, home: Option<&Path>) -> ApplyResult {
-    let paths = cascade_paths(start, home);
-    let entries: Vec<(std::path::PathBuf, String)> = paths
-        .into_iter()
-        .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
-        .collect();
+    let entries = existing_cascade(start, home);
     apply_dedup_entries(entries)
 }
 
@@ -283,10 +279,6 @@ pub fn apply_dedup(start: &Path, home: Option<&Path>) -> ApplyResult {
 /// 0.85-cosine paraphrase removal against user files. Idempotent and
 /// silent: a clean cascade (or <2 existing files) is a no-op.
 pub fn apply_dedup_exact(start: &Path, home: Option<&Path>) -> ApplyResult {
-    let paths = cascade_paths(start, home);
-    let entries: Vec<(std::path::PathBuf, String)> = paths
-        .into_iter()
-        .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
-        .collect();
+    let entries = existing_cascade(start, home);
     apply_dedup_entries_opts(entries, false)
 }

@@ -307,12 +307,30 @@ pub(crate) fn rules_files_for_agent(
 /// `(display_path, content)` in load order. Silently skips files that do
 /// not exist or cannot be read.
 pub fn read_cascade(start: &Path, home: Option<&Path>) -> Vec<(String, String)> {
-    cascade_paths(start, home)
+    existing_cascade(start, home)
         .into_iter()
-        .filter_map(|p| {
-            std::fs::read_to_string(&p)
-                .ok()
-                .map(|c| (p.display().to_string(), c))
-        })
+        .map(|(p, c)| (p.display().to_string(), c))
         .collect()
+}
+
+/// The existing cascade members, ONE entry per file on disk (#9).
+///
+/// Two spellings can name one file: `$CLAUDE_CONFIG_DIR/CLAUDE.md` symlinked
+/// to `~/.claude/CLAUDE.md` (also reached as the home ancestor's
+/// `.claude/CLAUDE.md`), a dotfile repo checkout, a symlinked project dir.
+/// Kept as two entries, dedup compared the file with itself, found every line
+/// "duplicated" and stripped it from one spelling — that is, from the file.
+/// Identity is the canonical path; the LAST spelling (most-specific load
+/// position) is the one kept.
+pub(crate) fn existing_cascade(start: &Path, home: Option<&Path>) -> Vec<(PathBuf, String)> {
+    let mut out: Vec<(PathBuf, PathBuf, String)> = Vec::new();
+    for p in cascade_paths(start, home) {
+        let Ok(c) = std::fs::read_to_string(&p) else {
+            continue;
+        };
+        let id = p.canonicalize().unwrap_or_else(|_| p.clone());
+        out.retain(|(seen, _, _)| *seen != id);
+        out.push((id, p, c));
+    }
+    out.into_iter().map(|(_, p, c)| (p, c)).collect()
 }

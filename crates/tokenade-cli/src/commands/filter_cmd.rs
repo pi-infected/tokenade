@@ -49,7 +49,16 @@ pub(crate) fn cmd_filter(rest: &[String]) -> i32 {
     // get the fold `wrap` would have applied: this command's help measures it
     // itself on `cat /proc/interrupts`, 0 % vs 83 %.
     let deliver = rest.iter().any(|a| a == "--deliver");
-    let argv: Vec<String> = rest.iter().filter(|a| *a != "--deliver").cloned().collect();
+    let mut argv: Vec<String> = rest.iter().filter(|a| *a != "--deliver").cloned().collect();
+    // `--staged <key>`: the producing command was staged by the Bash hook
+    // instead of spelled here (#8 — see `worktree_git`). A missing stage
+    // filters with no argv hint rather than failing the pipe.
+    if argv.first().map(String::as_str) == Some("--staged") {
+        argv = argv
+            .get(1)
+            .and_then(|k| crate::hooks::bash_pretool::worktree_git::take_staged_argv(k))
+            .unwrap_or_default();
+    }
     let rest: &[String] = &argv;
     // Third and last bare call site, closed with the same boundary as `wrap`
     // and `hookwrap`: one way of reaching a compactor, not three.

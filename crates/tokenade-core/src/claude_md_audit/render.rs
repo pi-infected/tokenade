@@ -193,14 +193,14 @@ pub fn apply_compress(start: &Path, home: Option<&Path>) -> ApplyResult {
     let mut files_modified = Vec::new();
     let mut tokens_before = 0usize;
     let mut tokens_after = 0usize;
-    for p in cascade_paths(start, home) {
-        let Ok(content) = std::fs::read_to_string(&p) else {
-            continue;
-        };
+    for (p, content) in existing_cascade(start, home) {
+        // Write through a symlink, not over it: `write_atomic` renames a temp
+        // file onto the path, which would replace the link with a copy.
+        let target = p.canonicalize().unwrap_or_else(|_| p.clone());
         tokens_before += tokenizer::estimate(&content);
         let compressed = whitespace_compress(&content);
         tokens_after += tokenizer::estimate(&compressed);
-        if compressed != content && crate::paths::write_atomic(&p, &compressed).is_ok() {
+        if compressed != content && crate::paths::write_atomic(&target, &compressed).is_ok() {
             files_modified.push(p.display().to_string());
         }
     }

@@ -436,6 +436,40 @@ mod tests {
         );
     }
 
+    /// #9: one file reached through two cascade spellings (a symlink) must
+    /// not be deduplicated against itself — that stripped every user line.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_cascade_file_is_never_deduped_against_itself() {
+        // Under /tmp, not $TMPDIR: a TMPDIR inside $HOME puts the developer's
+        // real ~/.claude/CLAUDE.md in the fixture's ancestor chain.
+        let dir = TmpDir(std::path::Path::new("/tmp").join(format!(
+            "tokenade-test-audit-symlink-{}",
+            std::process::id()
+        )));
+        std::fs::create_dir(&dir.0).unwrap();
+        let home = dir.join("home");
+        let proj = dir.join("proj");
+        std::fs::create_dir_all(home.join(".claude")).unwrap();
+        std::fs::create_dir_all(&proj).unwrap();
+        let global = home.join(".claude/CLAUDE.md");
+        let body = "# My rules\n\n## Testing\nAlways run the full test suite before committing.\n\n\n\n## Style\nPrefer early returns over nested conditionals.\n";
+        std::fs::write(&global, body).unwrap();
+        let link = proj.join("CLAUDE.md");
+        std::os::unix::fs::symlink(&global, &link).unwrap();
+
+        let r = apply_dedup_exact(&proj, Some(&home));
+        assert!(r.files_modified.is_empty(), "{:?}", r.files_modified);
+        assert_eq!(std::fs::read_to_string(&global).unwrap(), body);
+        assert_eq!(read_cascade(&proj, Some(&home)).len(), 1);
+
+        // Compaction writes THROUGH the link, never over it.
+        apply_compress(&proj, Some(&home));
+        assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+        let after = std::fs::read_to_string(&global).unwrap();
+        assert!(after.contains("Always run the full test suite") && !after.contains("\n\n\n"));
+    }
+
     #[test]
     fn apply_dedup_is_idempotent() {
         let dir = tmp_dir("idempotent");
