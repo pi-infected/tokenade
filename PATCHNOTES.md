@@ -1,5 +1,5 @@
 # Tokenade — what's new
-## Unreleased
+## 2.0.5
 - opencode 2: the plugin bridge now resets the savings ledger on the 2.x compaction event (`session.compaction.ended`, `event.data.sessionID`) and folds a structured shell `output` when the host's `result.content` is empty. Both were silent no-ops: the bridge listened for 1.x's removed `session.compacted` event, and accepted only a string `output`.
 
 ## 2.0.4

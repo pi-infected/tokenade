@@ -1,6 +1,6 @@
 {
   "name": "@tokenade/cli",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Tokenade — cut your AI coding agent's token bill. Installs the open-source Tokenade CLI (local token reduction for Claude Code, Codex, Cursor, Copilot and more).",
   "homepage": "https://tokenade.net",
   "repository": {
@@ -25,13 +25,13 @@
     "tar": "^7.5.16"
   },
   "optionalDependencies": {
-    "@tokenade/cli-linux-x64": "2.0.4",
-    "@tokenade/cli-linux-x64-musl": "2.0.4",
-    "@tokenade/cli-linux-arm64-musl": "2.0.4",
-    "@tokenade/cli-darwin-arm64": "2.0.4",
-    "@tokenade/cli-darwin-x64": "2.0.4",
-    "@tokenade/cli-win32-x64": "2.0.4",
-    "@tokenade/cli-win32-arm64": "2.0.4"
+    "@tokenade/cli-linux-x64": "2.0.5",
+    "@tokenade/cli-linux-x64-musl": "2.0.5",
+    "@tokenade/cli-linux-arm64-musl": "2.0.5",
+    "@tokenade/cli-darwin-arm64": "2.0.5",
+    "@tokenade/cli-darwin-x64": "2.0.5",
+    "@tokenade/cli-win32-x64": "2.0.5",
+    "@tokenade/cli-win32-arm64": "2.0.5"
   },
   "files": [
     "bin/",
