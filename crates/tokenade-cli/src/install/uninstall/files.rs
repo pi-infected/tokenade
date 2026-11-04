@@ -97,16 +97,28 @@ pub(crate) fn remove_tree_no_follow(path: &Path) -> std::io::Result<()> {
         } else {
             fs::remove_file(&p)
         };
-        if let Err(e) = res {
+        // Gone already is the goal reached: a hook or a background write
+        // running during uninstall can rename its temp file away between
+        // `read_dir` and the unlink. CI hit exactly that ("No such file or
+        // directory" on a tree that ended up absent).
+        if let Err(e) = res.or_else(gone_is_ok) {
             first_err.get_or_insert(e);
         }
     }
-    match fs::remove_dir(path) {
+    match fs::remove_dir(path).or_else(gone_is_ok) {
         Ok(()) => match first_err {
             Some(e) => Err(e),
             None => Ok(()),
         },
         Err(e) => Err(first_err.unwrap_or(e)),
+    }
+}
+
+fn gone_is_ok(e: std::io::Error) -> std::io::Result<()> {
+    if e.kind() == std::io::ErrorKind::NotFound {
+        Ok(())
+    } else {
+        Err(e)
     }
 }
 
