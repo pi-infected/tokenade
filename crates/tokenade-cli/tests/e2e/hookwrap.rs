@@ -1969,7 +1969,8 @@ fn e2e_git_in_an_isolated_worktree_runs_plainly_and_still_folds() {
         out.status,
         String::from_utf8_lossy(&out.stdout)
     );
-    assert_eq!(String::from_utf8_lossy(&out.stdout).lines().count(), 3);
+    // Same lines as git itself prints (a shallow CI checkout has fewer than 3).
+    assert_eq!(out.stdout, run("git log --oneline -3").stdout);
     // `filter` received the git argv: the staged copy was consumed.
     assert!(!staged());
 
