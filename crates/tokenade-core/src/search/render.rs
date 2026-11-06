@@ -89,13 +89,24 @@ pub fn render(query: &str, o: &Outcome) -> String {
             "no engine was queried".to_string()
         };
         s = format!("no usable results for {query:?} — {why}\n");
-        // Saturation is not emptiness: tell the agent to use its own search.
-        if o.refused.iter().any(|(_, r)| *r == Refusal::RateLimited) {
-            s.push_str(
-                "all engines are rate-limited or busy right now — use your native web \
-                 search if you have one, or retry in a moment.\n",
-            );
-        }
+    }
+    // A refusal is a wall, not an answer: the agent must go to its own search
+    // rather than stall or conclude the web is empty. This used to be said
+    // only when every breaker was ALREADY open (`RateLimited`); the search
+    // that first hits the wall — every engine answering with a challenge, a
+    // 403 or a timeout — said "no usable results" and nothing else, which is
+    // exactly the moment an agent that has been searching hard needs the
+    // way out. Also when a few hits came back, under the usable bar.
+    if !o.is_usable() && !o.refused.is_empty() {
+        s.push_str(
+            if o.refused.iter().any(|(_, r)| *r == Refusal::RateLimited) {
+                "all engines are rate-limited or busy right now — use your native web search \
+             for this query; `tokenade search` recovers on its own in a few minutes.\n"
+            } else {
+                "the engines refused or failed this search — use your native web search for this \
+             query; `tokenade search` recovers on its own in a few minutes.\n"
+            },
+        );
     }
     s
 }

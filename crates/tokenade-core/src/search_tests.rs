@@ -92,6 +92,22 @@ mod empty_outcome_tests {
             s.contains("all-engines") && s.contains(Refusal::RateLimited.as_str()),
             "the refusal must survive: {s}"
         );
+        assert!(s.contains("use your native web search"), "{s}");
+
+        // The FIRST search to hit the wall — every engine tried, every engine
+        // refused — must send the agent to its native search as well, not
+        // only the later ones that find every breaker already open.
+        let walled = Outcome {
+            results: Vec::new(),
+            used: vec!["bing", "duckduckgo"],
+            refused: vec![("bing", Refusal::Challenge), ("duckduckgo", Refusal::Unreachable)],
+        };
+        let s = render("rust tokio cancellation", &walled);
+        assert!(s.contains("bing: bot-challenge") && s.contains("use your native web search"), "{s}");
+
+        // Engines that answered with nothing refused nothing: no detour.
+        let empty = Outcome { results: Vec::new(), used: vec!["bing"], refused: Vec::new() };
+        assert!(!render("q", &empty).contains("native"));
     }
 }
 
