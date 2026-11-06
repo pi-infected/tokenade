@@ -212,12 +212,7 @@ pub(super) fn check_posix_shell_windows() -> HealthCheckResult {
     // `healthcheck` is user-facing enough that a flashing window is noticed.
     tokenade_core::process_util::configure_no_window(&mut sh);
     let sh_ok = sh.status().map(|s| s.success()).unwrap_or(false);
-    let git_bash = [
-        r"C:\Program Files\Git\bin\bash.exe",
-        r"C:\Program Files (x86)\Git\bin\bash.exe",
-    ]
-    .into_iter()
-    .find(|p| std::path::Path::new(p).exists());
+    let git_bash = tokenade_core::process_util::git_bash().map(|p| p.display().to_string());
     if sh_ok || git_bash.is_some() {
         hc(
             "posix-shell",

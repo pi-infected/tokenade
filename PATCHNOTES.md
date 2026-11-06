@@ -1,4 +1,9 @@
 # Tokenade — what's new
+## 2.0.7
+- Windows: a status line Tokenade wraps (`tokenade statusline --wrap-b64`) runs again when its command quotes a path, such as `node "d:\x\statusline.mjs"`. It was run through `cmd /C` with Rust's argument quoting, which cmd does not parse, so nothing ran and only the ticker showed. The command now runs through Git Bash, as Claude Code runs it, or through `cmd` with the line passed verbatim when Git Bash is missing. `tokenade wrap --shell cmd` had the same quoting bug and is fixed too (#10).
+- A wrapped status line that fails with no output now shows `⚠ status line `…` failed: <first stderr line>` instead of disappearing.
+- Git Bash is found the way Claude Code finds it: `CLAUDE_CODE_GIT_BASH_PATH`, then the Git whose `git.exe` is on PATH, then the default and per-user install directories.
+
 ## 2.0.6
 - Claude Code: `git` works again in subagents isolated in a worktree (`.claude/worktrees/…`). Claude Code refuses a command where git is an argument of another program, which `tokenade wrap 'git …'` was. There, a plain git command now runs as written and its output is piped into `tokenade filter`, so it is still compacted; a chain or pipe that involves git runs unwrapped (#8).
 - The SessionStart `CLAUDE.md` dedup no longer compares a file with itself when two cascade paths lead to it (a symlinked `$CLAUDE_CONFIG_DIR/CLAUDE.md`, a dotfile repo, a symlinked project), which stripped every user line but the headings. Files are now identified by their real path. `audit-claude-md --compress` also writes through a symlink instead of replacing it with a copy (#9).

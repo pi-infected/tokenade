@@ -540,15 +540,14 @@ pub(super) fn run_original_statusline(b64: &str, stdin_json: &str) -> String {
     let Ok(cmd) = String::from_utf8(raw) else {
         return String::new();
     };
-    let shell = if cfg!(windows) { "cmd" } else { "sh" };
-    let flag = if cfg!(windows) { "/C" } else { "-c" };
-    let mut sh_cmd = std::process::Command::new(shell);
+    // The host's shell, not `cmd /C` (#10): Claude Code runs this line through
+    // Git Bash on Windows, and `cmd` given a Rust-quoted line with its own
+    // quotes ran nothing — the user's status line vanished without a word.
+    let mut sh_cmd = tokenade_core::process_util::user_shell(&cmd);
     sh_cmd
-        .arg(flag)
-        .arg(&cmd)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null());
+        .stderr(std::process::Stdio::piped());
     // Every stream is piped or nulled, so no console is ever needed — and this
     // is the hottest spawn the product has: the host re-runs the status line on
     // each render (Cursor throttles to ~3/s while streaming). Without this, a
@@ -584,7 +583,33 @@ pub(super) fn run_original_statusline(b64: &str, stdin_json: &str) -> String {
         Ok(o) => o,
         Err(_) => return String::new(),
     };
-    original_statusline_text(&String::from_utf8_lossy(&out.stdout))
+    let text = original_statusline_text(&String::from_utf8_lossy(&out.stdout));
+    if text.trim().is_empty() && !out.status.success() {
+        return failed_statusline_hint(&cmd, &String::from_utf8_lossy(&out.stderr));
+    }
+    text
+}
+
+/// A wrapped status line that FAILED says so, in its own place, instead of
+/// disappearing: silence read as "tokenade ate my status line" (#10).
+pub(super) fn failed_statusline_hint(cmd: &str, stderr: &str) -> String {
+    let why = stderr
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("no output");
+    let clip = |s: &str, n: usize| -> String {
+        if s.chars().count() > n {
+            format!("{}…", s.chars().take(n).collect::<String>())
+        } else {
+            s.to_string()
+        }
+    };
+    format!(
+        "⚠ status line `{}` failed: {}",
+        clip(cmd, 40),
+        clip(why, 80)
+    )
 }
 
 /// EVERY line of the user's statusline, not the first. Keeping only line 1

@@ -14,10 +14,12 @@ mod decode;
 mod detach;
 mod drain;
 mod group;
+mod shell;
 pub use decode::*;
 pub use detach::*;
 pub use drain::*;
 pub use group::*;
+pub use shell::*;
 
 /// Read up to `cap` bytes from `r` in a background thread, draining
 /// the rest into oblivion. Returns the buffer + a boolean indicating

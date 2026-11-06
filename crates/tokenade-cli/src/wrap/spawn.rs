@@ -77,24 +77,17 @@ pub(crate) fn spawn_wrapped(
             let spawned = c.spawn();
             #[cfg(windows)]
             let spawned = spawned.or_else(|orig| {
-                for c in [
-                    r"C:\Program Files\Git\bin\bash.exe",
-                    r"C:\Program Files (x86)\Git\bin\bash.exe",
-                ] {
-                    if std::path::Path::new(c).exists() {
-                        let mut cmd = Command::new(c);
-                        cmd.arg("-c")
-                            .arg(shell_cmd)
-                            .env("TOKENADE_WRAPPING", "1")
-                            .stdout(std::process::Stdio::piped())
-                            .stderr(std::process::Stdio::piped());
-                        tokenade_core::process_util::configure_no_window(&mut cmd);
-                        if let Ok(ch) = cmd.spawn() {
-                            return Ok(ch);
-                        }
-                    }
-                }
-                Err(orig)
+                let Some(bash) = tokenade_core::process_util::git_bash() else {
+                    return Err(orig);
+                };
+                let mut cmd = Command::new(bash);
+                cmd.arg("-c")
+                    .arg(shell_cmd)
+                    .env("TOKENADE_WRAPPING", "1")
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped());
+                tokenade_core::process_util::configure_no_window(&mut cmd);
+                cmd.spawn().or(Err(orig))
             });
             spawned
         }
@@ -118,8 +111,17 @@ pub(crate) fn spawn_wrapped(
         }
         ShellKind::Cmd => {
             let (o, e) = piped();
-            let mut c = Command::new("cmd.exe");
-            c.args(["/C", shell_cmd]).stdout(o).stderr(e);
+            // Verbatim, not `args(["/C", …])`: Rust's quoting is not cmd's,
+            // and a line with its own quotes ran nothing (#10).
+            #[cfg(windows)]
+            let mut c = tokenade_core::process_util::cmd_exe(shell_cmd);
+            #[cfg(not(windows))]
+            let mut c = {
+                let mut c = Command::new("cmd.exe");
+                c.args(["/C", shell_cmd]);
+                c
+            };
+            c.stdout(o).stderr(e);
             tokenade_core::process_util::configure_no_window(&mut c);
             c.spawn()
         }

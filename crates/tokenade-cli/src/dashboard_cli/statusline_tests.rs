@@ -154,3 +154,37 @@ fn a_multi_line_user_statusline_keeps_every_line() {
     assert_eq!(original_statusline_text("\n\n"), "");
     assert_eq!(original_statusline_text("one"), "one");
 }
+
+#[cfg(test)]
+mod wrapped_command_runs_as_the_host_runs_it {
+    use super::*;
+    use base64::Engine as _;
+
+    fn b64(s: &str) -> String {
+        base64::engine::general_purpose::STANDARD.encode(s)
+    }
+
+    /// #10: `node "d:\x\statusline.mjs"` — a script path quoted, in the
+    /// platform's own spelling (backslashes on Windows), with a space in it.
+    #[test]
+    fn a_quoted_native_path_runs() {
+        let dir = std::env::temp_dir().join(format!("tk-sl spaced-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("status line.sh");
+        std::fs::write(&script, "cat >/dev/null; echo \"model · dir\"\n").unwrap();
+        let cmd = format!("sh \"{}\"", script.display());
+        let out = run_original_statusline(&b64(&cmd), "{\"session_id\":\"s\"}");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(out, "model · dir", "{cmd}");
+    }
+
+    /// A failing wrapped command says so instead of vanishing.
+    #[test]
+    fn a_failing_command_names_itself_and_why() {
+        let out = run_original_statusline(&b64("echo boom >&2; exit 3"), "{}");
+        assert!(out.starts_with("⚠ status line `echo boom >&2; exit 3` failed: boom"), "{out}");
+        // A command that fails but still prints keeps its output.
+        let out = run_original_statusline(&b64("echo partial; exit 1"), "{}");
+        assert_eq!(out, "partial");
+    }
+}
