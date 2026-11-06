@@ -289,6 +289,38 @@ mod statusline_wire_tests {
         assert!(!wire_statusline_into(&mut o, EXE));
     }
 
+    /// #10 follow-up: the host runs the status line through a shell (Git Bash
+    /// on Windows), so the exe is quoted exactly as in the hooks — an
+    /// unquoted path lost its backslashes there, or split at a space here.
+    #[test]
+    fn the_exe_is_quoted_for_the_hosts_shell_and_old_entries_heal() {
+        use base64::Engine as _;
+        let b64 = |s: &str| base64::engine::general_purpose::STANDARD.encode(s);
+        let spaced = "/home/u v/.tokenade/bin/tokenade";
+        let mut o = obj("{}");
+        assert!(wire_statusline_into(&mut o, spaced));
+        assert_eq!(cmd(&o), format!("'{spaced}' statusline"));
+        assert!(is_tokenade_statusline(&cmd(&o)));
+        assert!(!wire_statusline_into(&mut o, spaced), "quoted form is canonical");
+
+        // A differently-quoted entry (hand-edited, other host) is refreshed, and
+        // the user's wrapped command rides along.
+        let old = format!("\"{spaced}\" statusline --wrap-b64 {}", b64("mybar.sh"));
+        let mut o = obj(&serde_json::json!({ "statusLine": { "command": old } }).to_string());
+        assert!(wire_statusline_into(&mut o, spaced));
+        assert_eq!(cmd(&o), format!("'{spaced}' statusline --wrap-b64 {}", b64("mybar.sh")));
+
+        // Windows spelling, as `win_hook_exe` writes it.
+        assert!(is_tokenade_statusline(
+            r#""C:\Program Files\nodejs\tokenade.exe" statusline --wrap-b64 eA=="#
+        ));
+        assert!(!is_tokenade_statusline(r#""C:\tools\tokenade.exe" --version"#));
+        assert!(is_tokenade_statusline(
+            r"C:\Program Files\nodejs\tokenade.exe statusline"
+        ));
+        assert!(!is_tokenade_statusline("node ~/tokenade-bar.js statusline"));
+    }
+
     #[test]
     fn custom_user_statusline_is_wrapped_not_overwritten() {
         let mut o = obj(

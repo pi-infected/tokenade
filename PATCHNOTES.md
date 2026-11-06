@@ -1,4 +1,7 @@
 # Tokenade — what's new
+## Unreleased
+- The Claude Code status line Tokenade installs now quotes the `tokenade` path the way its hooks do. On Windows Claude Code runs the status line through Git Bash, which stripped the backslashes of the unquoted path (`C:Users…tokenade: command not found`) and left the bar empty; on any system a path with a space broke it too. Existing entries are rewritten on the next self-heal, and a wrapped status line is carried over (#10).
+
 ## 2.0.7
 - Windows: a status line Tokenade wraps (`tokenade statusline --wrap-b64`) runs again when its command quotes a path, such as `node "d:\x\statusline.mjs"`. It was run through `cmd /C` with Rust's argument quoting, which cmd does not parse, so nothing ran and only the ticker showed. The command now runs through Git Bash, as Claude Code runs it, or through `cmd` with the line passed verbatim when Git Bash is missing. `tokenade wrap --shell cmd` had the same quoting bug and is fixed too (#10).
 - A wrapped status line that fails with no output now shows `⚠ status line `…` failed: <first stderr line>` instead of disappearing.

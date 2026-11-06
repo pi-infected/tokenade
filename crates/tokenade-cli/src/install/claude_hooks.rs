@@ -221,13 +221,30 @@ pub(crate) fn statusline_opted_out(home: Option<&Path>) -> bool {
 /// report). The reliable signal is the `statusline` subcommand sitting
 /// right after a tokenade-ish binary.
 pub(crate) fn is_tokenade_statusline(cmd: &str) -> bool {
-    let mut it = cmd.split_whitespace();
-    let Some(first) = it.next() else { return false };
-    let base = first.rsplit(['/', '\\']).next().unwrap_or(first);
-    // CONTAINS, not starts-with: a scratch copy named
-    // `.autoresearch-tokenade-<pid>` was taken for a foreign statusline and
-    // wrapped by the real binary — the line died with the copy.
-    base.to_ascii_lowercase().contains("tokenade") && it.next() == Some("statusline")
+    // The exe is everything before the ` statusline` word, quoted or not: an
+    // older install wrote it unquoted, and a Windows path may hold spaces
+    // (`C:\Program Files\…`), so it is not simply the first word.
+    cmd.match_indices(" statusline").any(|(i, m)| {
+        let after = &cmd[i + m.len()..];
+        if !(after.is_empty() || after.starts_with(char::is_whitespace)) {
+            return false;
+        }
+        let head = cmd[..i].trim();
+        let exe = head.trim_matches(['"', '\'']);
+        // One program, not `node ~/tokenade-bar.js statusline`: quoted, a
+        // single word, or an unquoted Windows path (`C:\Program Files\…`).
+        let one_program = exe.len() + 2 == head.len()
+            || !exe.contains(char::is_whitespace)
+            || exe.get(1..3) == Some(":\\");
+        if !one_program {
+            return false;
+        }
+        let base = exe.rsplit(['/', '\\']).next().unwrap_or(exe);
+        // CONTAINS, not starts-with: a scratch copy named
+        // `.autoresearch-tokenade-<pid>` was taken for a foreign statusline and
+        // wrapped by the real binary — the line died with the copy.
+        base.to_ascii_lowercase().contains("tokenade")
+    })
 }
 
 /// The user's own command under a (possibly nested) tokenade wrapper, as the
@@ -275,7 +292,12 @@ pub(crate) fn wire_statusline_into(
         .unwrap_or("")
         .to_string();
     let ours = is_tokenade_statusline(&current);
-    let canonical_prefix = format!("{exe} statusline");
+    // Quoted as the hooks are (#10): Claude Code runs the status line through
+    // Git Bash on Windows, which eats the backslashes of an unquoted path
+    // (`C:\Users\…\tokenade` → `C:Users…tokenade: command not found`); on
+    // Unix a path with a space would split. An old unquoted entry no longer
+    // matches the prefix, so it is refreshed (case 4).
+    let canonical_prefix = format!("{} statusline", super::hook_util::wrap_exe_token(exe));
     // Case 3: already ours AND already pointing at the stable exe → nothing
     // to do. `starts_with(prefix)` also matches an existing `--wrap-b64`
     // wrap (the suffix follows the prefix), so a wrapped user command is a
