@@ -1150,7 +1150,10 @@ mod a_killed_command_says_so {
     #[test]
     fn a_kill_is_named() {
         let h = TempHome::new("sig-kill");
-        let (_out, err, code) = wrap_it(&h, "timeout -s KILL 1 sh -c 'while :; do echo w; done'");
+        // The shell kills ITSELF, like the SIGSEGV case above. `timeout -s
+        // KILL` reports 124 or 137 depending on the coreutils build and on
+        // timing (137 here, 124 on the CI runner), which tested `timeout`.
+        let (_out, err, code) = wrap_it(&h, "sh -c 'echo w; kill -KILL $$'");
         assert_eq!(code, 137, "stderr:\n{err}");
         assert!(err.contains("SIGKILL"), "stderr:\n{err}");
         assert!(
