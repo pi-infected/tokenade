@@ -1,5 +1,5 @@
 # Tokenade — what's new
-## Unreleased
+## 2.0.8
 - `tokenade search` now tells the agent to use its native web search as soon as the engines refuse a search (bot challenge, 403, timeout), not only once every engine is already paused. Until now the first search to hit that wall answered `no usable results` and nothing else, so an agent searching hard could stall or conclude the web had nothing. The Claude Code `WebSearch` hook already handed those searches back to the native tool.
 - The Claude Code status line Tokenade installs now quotes the `tokenade` path the way its hooks do. On Windows Claude Code runs the status line through Git Bash, which stripped the backslashes of the unquoted path (`C:Users…tokenade: command not found`) and left the bar empty; on any system a path with a space broke it too. Existing entries are rewritten on the next self-heal, and a wrapped status line is carried over (#10).
 
