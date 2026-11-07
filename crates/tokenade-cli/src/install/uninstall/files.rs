@@ -105,13 +105,42 @@ pub(crate) fn remove_tree_no_follow(path: &Path) -> std::io::Result<()> {
             first_err.get_or_insert(e);
         }
     }
-    match fs::remove_dir(path).or_else(gone_is_ok) {
+    // A writer still running (a hook, a background index or log write) can
+    // drop a new file in after the walk: the directory is then "not empty"
+    // although everything we saw is gone (CI, 2.0.8). Walk it again, a
+    // bounded number of times, before calling the delete failed.
+    let mut last = fs::remove_dir(path).or_else(gone_is_ok);
+    for _ in 0..NOT_EMPTY_RETRIES {
+        match &last {
+            Err(e) if first_err.is_none() && e.kind() == std::io::ErrorKind::DirectoryNotEmpty => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                last = remove_contents_then_dir(path);
+            }
+            _ => break,
+        }
+    }
+    match last {
         Ok(()) => match first_err {
             Some(e) => Err(e),
             None => Ok(()),
         },
         Err(e) => Err(first_err.unwrap_or(e)),
     }
+}
+
+const NOT_EMPTY_RETRIES: usize = 5;
+
+/// One more pass over what appeared since: every entry, then the directory.
+fn remove_contents_then_dir(path: &Path) -> std::io::Result<()> {
+    let entries = match fs::read_dir(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        r => r?,
+    };
+    for entry in entries {
+        let p = entry?.path();
+        remove_tree_no_follow(&p).or_else(gone_is_ok)?;
+    }
+    fs::remove_dir(path).or_else(gone_is_ok)
 }
 
 fn gone_is_ok(e: std::io::Error) -> std::io::Result<()> {
@@ -306,5 +335,36 @@ pub(crate) fn strip_autocompact_override(home: Option<&Path>, dry_run: bool) -> 
             path.display()
         )),
         Err(e) => Some(format!("couldn't rewrite {}: {e}", path.display())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A writer that keeps dropping files into the tree while it is deleted
+    /// (a hook still running during uninstall) must not make it fail.
+    #[test]
+    fn a_tree_written_to_while_deleted_still_goes() {
+        let root = std::env::temp_dir().join(format!("tokenade-rmtree-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("sub")).unwrap();
+        for i in 0..200 {
+            fs::write(root.join(format!("f{i}")), b"x").unwrap();
+        }
+        let w = root.clone();
+        let writer = std::thread::spawn(move || {
+            for i in 0..40 {
+                let _ = fs::write(w.join(format!("late{i}")), b"x");
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        let res = remove_tree_no_follow(&root);
+        writer.join().unwrap();
+        // The writer may outlive the delete and recreate nothing but its own
+        // files under a missing parent — those writes fail, which is fine.
+        assert!(res.is_ok(), "{res:?}");
+        let _ = fs::remove_dir_all(&root);
     }
 }
