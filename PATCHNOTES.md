@@ -1,5 +1,5 @@
 # Tokenade — what's new
-## Unreleased
+## 2.0.9
 - `tokenade uninstall` no longer reports `couldn't fully delete ~/.tokenade (Directory not empty)` when a hook or background write drops a file there while it is being deleted; it sweeps the directory again (a few times at most) before giving up.
 
 ## 2.0.8
