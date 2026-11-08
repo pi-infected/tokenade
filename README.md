@@ -50,10 +50,15 @@ real end-to-end agent runs, every optimizer measured the same way:
   short reference, or as a diff when it changed.
 - **Code intelligence** — `map`, `query`, `skeleton`, `impact` and hybrid
   `semantic` search, so the agent stops reading whole files to find one thing.
-- **MCP optimization** — MCP servers are wrapped: responses compacted in
-  transit, tool manifests trimmed to their callable skeleton.
+- **MCP optimization** — third-party MCP servers are wrapped and their large
+  results compacted in transit.
 - **Web** — `tokenade web` / `tokenade search` return compact Markdown and
-  result lists instead of raw HTML.
+  result lists instead of raw HTML; on agents with hooks, the agent's own web
+  fetch and search go through them, and fall back to the native tool when
+  Tokenade's search engines can't answer.
+- **Documents and media** — `tokenade read` turns PDF, Office, EPUB, audio,
+  video and image files into text the agent can use (a transcript when a
+  local `whisper` or `whisper-cli` is installed, OCR when `tesseract` is).
 - **Context and output** — prompt-cache-aware compaction of stale context,
   and a lean-output style note that drops filler without dropping facts.
 - **Secret redaction** — credentials are scrubbed from what Tokenade logs,
@@ -115,18 +120,24 @@ with a signed GitHub Release asset as fallback) and cached; set
 
 ## Supported agents
 
-Full integration (hooks: command compaction, read dedup, web, MCP, code
-search, lean output, context optimization): **Claude Code**, **OpenCode**,
-**Kilo Code**, **Copilot CLI**, **Hermes**, **Cline**, **T3 Code**.
+`tokenade install` detects the agents on your machine and wires each through
+the strongest channel it offers:
 
-Most features: **OpenClaw** and **Pi** (no MCP wrapping); **Qwen Code** (no
-web replacement); **Codex CLI** and the Codex app, **Cursor**, **Grok** (no
-web replacement or read dedup); **Droid** (no web, MCP wrapping or read
-dedup).
+- **Hooks:** Claude Code (CLI and Claude Desktop's Code tab), Codex CLI,
+  Copilot CLI, Cursor, Qwen Code, Droid, Antigravity CLI, T3 Code (through
+  Claude Code's hooks), and Grok (hooks plus the local LLM proxy, since its
+  hooks can't rewrite output).
+- **Plugin or extension:** OpenCode, Kilo Code, Cline, Hermes, OpenClaw, Pi.
+- **Local LLM proxy:** Aider (with a startup command that loads
+  `tokenade map`) and the Codex app, plus Codex CLI until its hooks are
+  approved.
+- **Rules file and MCP wrapping only:** Devin Desktop (formerly Windsurf),
+  Copilot in VS Code, and Claude Desktop's Chat (MCP only).
 
-Partial: **Aider** (run commands through `tokenade wrap …`),
-**Antigravity** and **Claude Desktop chat** (MCP optimization only).
-Claude Desktop's Code tab runs Claude Code and gets full integration.
+Hook and plugin agents get nearly every feature above (context optimisation
+is partial on some); the others get part of them, more with the LLM proxy.
+The per-agent, per-feature matrix is at
+<https://tokenade.net/en/docs/compatibility>.
 
 `tokenade install --only <agent>` limits the install to one agent;
 `tokenade uninstall` removes everything it added.
@@ -137,7 +148,9 @@ Your savings
 ledger and dashboard (`tokenade gain`, `tokenade dashboard`) stay on your
 machine. The only network calls are:
 
-- the ones you ask for (`tokenade web`, `tokenade search`);
+- web fetches and searches: the ones you or your agent ask for
+  (`tokenade web`, `tokenade search`, and the agent's own web tools on hook
+  agents), sent straight to the site or to public search engines;
 - the one-time embedding-model download (see above);
 - a daily **auto-update** check that reads the signed `manifest.json` of the
   latest GitHub Release and only installs a binary whose signature and
@@ -164,6 +177,9 @@ usage-report files under `~/.tokenade` once and keeps your savings history.
 ```sh
 tokenade wrap 'cargo test'          # run a noisy command, get the compacted output
 some-cmd | tokenade read -          # compact any blob; format auto-detected
+tokenade read report.pdf            # a document or media file as text
+tokenade search "tokio cancel"      # web search: titles, URLs, snippets
+tokenade web https://example.com    # a page as compact Markdown
 tokenade map                        # codebase structure
 tokenade query parse_config         # locate a symbol
 tokenade skeleton src/lib.rs        # signatures only
