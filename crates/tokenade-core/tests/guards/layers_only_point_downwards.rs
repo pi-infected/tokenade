@@ -56,6 +56,7 @@ pub(crate) const LAYERS: &[(&str, &[&str])] = &[
             "edit_distance",
             "gitignore",
             "line_diff",
+            "line_patch",
             "profile",
             "progress",
             "prompt",

@@ -85,6 +85,7 @@ pub mod install_state;
 pub mod journal;
 pub mod js_render;
 pub mod judge;
+pub mod line_patch;
 pub mod mcp_compact;
 pub mod mistakes;
 pub mod model_costs;

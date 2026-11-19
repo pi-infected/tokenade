@@ -397,10 +397,8 @@ fn mask_text(
     Some((placeholder, before, after))
 }
 
-/// Compact a whole transcript in place: mask oversized `tool_result` text
-/// blocks, stashing each original via [`crate::disclose::stash_for_reference`]
-/// so it stays recoverable (and TTL-bounded). Unchanged lines keep their exact
-/// bytes. Writes atomically (temp + rename) only when something changed.
+/// Compact a whole transcript in place ([`crate::line_patch`]): mask oversized
+/// `tool_result` text blocks, stashing each original so it stays recoverable.
 /// **Every line keeps its byte length** (JSON-whitespace padding; a line the mask
 /// would lengthen is kept): readers follow it by byte offset (lost compactions, 2026-10-15).
 /// Returns the token accounting; a no-op file returns a zero [`CompactStats`].
@@ -417,13 +415,14 @@ pub fn compact_transcript(path: &std::path::Path) -> std::io::Result<CompactStat
     // A delegated report is the one result nothing can produce again, so it
     // keeps its opening when the bulk goes. Same pass, same cost.
     let delegated = crate::superseded::delegated_report_ids(&parsed_lines);
-    let mut out = String::with_capacity(content.len());
-    let mut stats = CompactStats::default();
-    let mut changed = false;
+    let mut patches = Vec::new();
+    let mut gains = Vec::new();
+    let mut offset = 0u64;
     for line in content.split_inclusive('\n') {
+        let at = offset;
+        offset += line.len() as u64;
         let trimmed = line.strip_suffix('\n').unwrap_or(line);
         if trimmed.is_empty() {
-            out.push_str(line);
             continue;
         }
         // `stash_sole_copy`, not `stash_for_reference`: masking REPLACES the
@@ -447,21 +446,30 @@ pub fn compact_transcript(path: &std::path::Path) -> std::io::Result<CompactStat
         };
         let folded = compact_line_gated_keeping_head(trimmed, &mut stash, gate, keep_head)
             .or_else(|| compact_tool_use_line(trimmed, &mut stash, &dead));
-        match folded.filter(|(new_line, _, _)| new_line.len() <= trimmed.len()) {
-            Some((new_line, b, a)) => {
-                out.push_str(&new_line);
-                out.push_str(&" ".repeat(trimmed.len() - new_line.len()));
-                out.push('\n');
-                stats.blocks_masked += 1;
-                stats.tokens_before += b;
-                stats.tokens_after += a;
-                changed = true;
-            }
-            None => out.push_str(line),
+        if let Some((new_line, b, a)) = folded.filter(|(n, _, _)| n.len() <= trimmed.len()) {
+            let mut new = new_line.into_bytes();
+            new.resize(trimmed.len(), b' ');
+            patches.push(crate::line_patch::Patch {
+                offset: at,
+                old: trimmed.into(),
+                new,
+            });
+            gains.push((b, a));
         }
     }
-    if changed {
-        write_atomic(path, out.as_bytes())?;
+    // In place, never temp + rename: the session may append while this runs,
+    // and a rename would drop those lines (#12). A line changed since the read
+    // keeps its new bytes; only the folds that landed are counted.
+    let mut stats = CompactStats::default();
+    for (landed, (b, a)) in crate::line_patch::apply(path, &patches)?
+        .into_iter()
+        .zip(gains)
+    {
+        if landed {
+            stats.blocks_masked += 1;
+            stats.tokens_before += b;
+            stats.tokens_after += a;
+        }
     }
     Ok(stats)
 }
@@ -481,14 +489,6 @@ fn superseded_line_gate(line: &str, dead: &std::collections::HashSet<String>) ->
     let ids = crate::superseded::result_ids_in_line(&v);
     (!ids.is_empty() && ids.iter().all(|id| dead.contains(id)))
         .then_some(Gate::NetGain(MASK_SUPERSEDED_MIN_NET_GAIN))
-}
-
-/// Write `bytes` to `path` atomically via a sibling temp file + rename, so a
-/// crash mid-write can never leave Claude a half-truncated transcript.
-fn write_atomic(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
-    let tmp = path.with_extension("jsonl.tokenade-tmp");
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(&tmp, path)
 }
 
 /// The SHORT Anthropic prompt-cache TTL — the floor of the trim gate, not

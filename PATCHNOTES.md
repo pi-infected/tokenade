@@ -1,4 +1,8 @@
 # Tokenade — what's new
+## 2.0.10
+- Folding a Claude Code transcript (before a compaction, at session start for idle sessions, on resume, `tokenade compact-sessions`) no longer loses the lines the session appends while it runs. The transcript was rewritten as a temp copy renamed over the original, so every line written between the read and the rename was dropped, and the file got a new identity. Each fold now overwrites its own line in place, and only if that line is still the one that was read; everything else, including the file's identity and any trailing newline, is left as it was. On Windows this also ends the `Access is denied` rename failures that left a `.jsonl.tokenade-tmp` copy behind (#12).
+- `TOKENADE_NO_PRECOMPACT_MASK=1` turns off the fold that runs right before Claude Code compacts a session, on its own. `TOKENADE_NO_SESSION_COMPACT` still covers the session-start trims (#12).
+
 ## 2.0.9
 - `tokenade uninstall` no longer reports `couldn't fully delete ~/.tokenade (Directory not empty)` when a hook or background write drops a file there while it is being deleted; it sweeps the directory again (a few times at most) before giving up.
 

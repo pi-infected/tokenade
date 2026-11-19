@@ -119,7 +119,11 @@ pub(crate) fn cmd_hookwrap_precompact() -> i32 {
     // pointers, and the barrier is what protects them from LRU eviction.
     let mut masked_blocks = 0usize;
     let mut masked_saved = 0usize;
-    if !transcript_path.is_empty() {
+    // Its own switch: `TOKENADE_NO_SESSION_COMPACT` is the SessionStart trim of
+    // idle transcripts, a different moment with a different cost (#12).
+    if !transcript_path.is_empty()
+        && !tokenade_core::env_compat::is_truthy_one("TOKENADE_NO_PRECOMPACT_MASK")
+    {
         if let Ok(st) = tokenade_core::session_compact::compact_transcript(std::path::Path::new(
             transcript_path,
         )) {
@@ -443,7 +447,7 @@ pub(crate) fn compact_session_transcripts(
             // last-activity-BEFORE-resume stamp: if that exceeds the max cache
             // TTL, this session's server-side prompt cache has already expired
             // by idle, so the very first resume request is a full-input miss
-            // regardless. Trimming it now (atomic temp+rename, recoverable via
+            // regardless. Trimming it now (in place, recoverable via
             // stash) only makes that unavoidable miss cheaper — zero risk to a
             // live cache. Gated strictly on provable idleness against the TTL
             // the transcript's own tail proves it uses (2026-07-12: Claude

@@ -486,4 +486,45 @@ mod a_delegated_report_keeps_its_conclusion {
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// #12: a line the session appends while its transcript is compacted is
+    /// still on disk afterwards. The old temp + rename replaced the file with
+    /// the copy read at the start, dropping about half of such appends.
+    #[test]
+    fn lines_appended_during_compaction_survive() {
+        use std::io::Write;
+        let _iso = crate::platform::StoreIsolation::new("lines_appended_during_c");
+        let path =
+            std::env::temp_dir().join(format!("tokenade-append-race-{}.jsonl", std::process::id()));
+        let big = |i: usize| {
+            serde_json::json!({"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": format!("t{i}"), "content": "word ".repeat(3_000)}
+            ]}})
+            .to_string()
+        };
+        std::fs::write(&path, (0..40).map(|i| big(i) + "\n").collect::<String>()).unwrap();
+        let writer = {
+            let path = path.clone();
+            std::thread::spawn(move || {
+                for i in 0..200 {
+                    let mut f = std::fs::OpenOptions::new().append(true).open(&path).unwrap();
+                    writeln!(f, r#"{{"type":"system","n":{i}}}"#).unwrap();
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+            })
+        };
+        let mut masked = 0;
+        while !writer.is_finished() {
+            masked += compact_transcript(&path).unwrap().blocks_masked;
+        }
+        writer.join().unwrap();
+        masked += compact_transcript(&path).unwrap().blocks_masked;
+        let out = std::fs::read_to_string(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+        for i in 0..200 {
+            assert!(out.contains(&format!(r#""n":{i}}}"#)), "append {i} was lost");
+        }
+        assert_eq!(masked, 40, "each block is masked once, and counted once");
+        assert_eq!(out.lines().filter(|l| l.contains(MARKER)).count(), 40);
+    }
 }
