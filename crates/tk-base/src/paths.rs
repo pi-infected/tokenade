@@ -469,15 +469,24 @@ fn running_from_a_test_binary() -> bool {
     // guard OFF under any `CARGO_TARGET_DIR` (2026-10-03, a clean-clone run
     // built into `target-clean/`): the one setup where a test is least watched
     // was the one it stopped protecting.
-    let in_deps = exe
-        .parent()
-        .and_then(|d| d.file_name())
-        .is_some_and(|n| n == "deps");
+    //
+    // Cargo 1.100 moved them to `<build-dir>/<profile>/build/<pkg>/<hash>/out/
+    // <name>-<hash>`, and the guard went off on every CI run with it: the
+    // directory above `out` carrying the binary's own hash is that layout.
     let stem = exe.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    let hashed = stem
+    let Some(hash) = stem
         .rsplit_once('-')
-        .is_some_and(|(_, h)| h.len() == 16 && h.bytes().all(|b| b.is_ascii_hexdigit()));
-    in_deps && hashed
+        .map(|(_, h)| h)
+        .filter(|h| h.len() == 16 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+    else {
+        return false;
+    };
+    fn name(p: Option<&std::path::Path>) -> Option<&str> {
+        p?.file_name()?.to_str()
+    }
+    let dir = exe.parent();
+    name(dir) == Some("deps")
+        || (name(dir) == Some("out") && name(dir.and_then(|d| d.parent())) == Some(hash))
 }
 
 /// The account's home, from the OS rather than from `$HOME`.
