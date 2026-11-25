@@ -54,12 +54,7 @@ rustflags = ["-C", "target-feature=+crt-static"]
 TOKENADE_PRESSURE = { value = "1.0", force = true }
 
 # Convenience alias. `cargo t` runs the DEFAULT test suite: the whole workspace
-# (tokenade-core / tokenade-cli / tokenade-bench). tokenade-llama-sys is NOT a
-# workspace member — its build.rs compiles llama.cpp via cmake (very slow, needs
-# a C/C++ toolchain) and the local-llm sub-agent feature it backs is shelved —
-# so `cargo test --workspace` (and this alias) NEVER invoke cmake/llama.cpp.
-# Exercise that crate on demand only, with the feature that pulls it in:
-#   cargo test -p tokenade-cli --features local-llm
+# (tokenade-core / tokenade-cli / tokenade-bench).
 [alias]
 t = "test --workspace"
 # The fast path: nextest puts every test from all 51 binaries into ONE parallel

@@ -18,6 +18,7 @@ Stdlib-only (subprocess + os + shutil): all real compaction logic lives in the
 Rust binary. This file is a thin bridge so the multi-OS surface stays in Rust —
 it runs under Hermes' own Python interpreter, which is guaranteed present.
 """
+import functools
 import os
 import shutil
 import subprocess
@@ -205,217 +206,223 @@ def _tokenade_bin():
     return shutil.which("tokenade") or "tokenade"
 
 
+def _transform_tool_result(bin_path, *args, tool_name=None, result=None, **_kw):  # noqa: C901
+    # Positional- AND keyword-tolerant: Hermes may call hook(name,
+    # result) or hook(result=…, tool_name=…). Recover the two values
+    # from whatever shape arrives; never raise into the host turn.
+    try:
+        if result is None and args:
+            # Heuristic: the longest string arg is the tool result;
+            # a shorter string arg is the tool name.
+            strs = [a for a in args if isinstance(a, str)]
+            if strs:
+                result = max(strs, key=len)
+                if tool_name is None and len(strs) > 1:
+                    tool_name = min(strs, key=len)
+        if not isinstance(result, str):
+            return None
+        if len(result) > _MAX_CHARS:
+            return None
+        # The floor below is about FOLDING and about scanning for
+        # secrets, and a document read is neither: the words are in the
+        # FILE, not in what the host handed back. A host that decoded
+        # nothing must not close the door on the extractor.
+        _doc_path = _read_target_path(tool_name, _kw.get("args"))
+        if len(result) < _REDACT_MIN_CHARS and not _doc_path:
+            return None
+        if _skipped(tool_name) or _looks_binary(result):
+            return None
+        env = dict(os.environ)
+        # Attribute the saving to the Hermes agent in tokenade's ledger.
+        # Highest-precedence override so a parent agent's env can't
+        # mis-attribute it.
+        env["TOKENADE_AGENT"] = "hermes"
+        # See `_session_key`: without this the repeat-delivery fold is
+        # unreachable, because the binary refuses to claim a context it
+        # was told nothing about.
+        env["TOKENADE_SESSION"] = _session_key(_kw.get("session_id"))
+        # The command behind a shell result. `read -` detects by
+        # CONTENT and content cannot say which program produced it —
+        # measured 2026-08-07, git output came back uncompacted without
+        # this and folded to a quarter with it. Hermes passes the tool
+        # input as `args=`; we were dropping it into `**_kw`.
+        # Documents first: extract from the FILE, not from what the
+        # host made of it. Falls through to the generic fold when
+        # there is nothing to gain.
+        rp = _doc_path
+        if rp:
+            dp = _run_tokenade(
+                bin_path,
+                ["read", rp],
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=_TIMEOUT_S,
+                env=env,
+            )
+            dout = dp.stdout
+            # Not a fold, so not the fold's rule: with an empty host
+            # result "is it smaller?" is false for every extraction,
+            # and the words are dropped for the empty string.
+            if dp.returncode == 0 and dout and (
+                len(result) == 0
+                or len(dout) < len(result)
+                or _scrubbed(dp.stderr)
+            ):
+                _mark("hook-fired")
+                return dout
+        hint = _command_hint(tool_name, _kw.get("args"))
+        argv = ["read", "-"]
+        if hint:
+            argv += ["--cmd", hint]
+        proc = _run_tokenade(
+            bin_path,
+            argv,
+            input=result,
+            capture_output=True,
+            # Pin UTF-8 (not the locale default) so non-ASCII tool
+            # output — CJK, accents, emoji — round-trips without
+            # mojibake.
+            encoding="utf-8",
+            errors="replace",
+            timeout=_TIMEOUT_S,
+            env=env,
+        )
+        out = proc.stdout
+        # Only replace when the result got strictly SHORTER. `auto -`
+        # may echo an unchanged input back verbatim (+ a trailing
+        # newline) when nothing folds — returning that would hand the
+        # model a LONGER string. "Never make it worse" beats reclaiming
+        # the rare token-shorter-but-char-longer reflow.
+        if proc.returncode == 0 and out and (len(out) < len(result) or _scrubbed(proc.stderr)):
+            _mark("hook-fired")
+            return out
+    except Exception:
+        # Any failure -> return None so Hermes keeps the original.
+        pass
+    return None
+
+
+# `pre_tool_call` — the only moment a delegation's arguments are
+# still modifiable. Hermes passes the SAME `args` dict the executor
+# will use next (`model_tools.py` calls
+# `resolve_pre_tool_block(function_name, function_args, …)` and
+# `_get_pre_tool_call_directive_details` forwards it without a copy),
+# so an in-place mutation lands in the real call.
+#
+# The tool is `delegate_task`, whose schema carries `goal` (the task)
+# and `context` (what the child must know), in single form or batched
+# under `tasks`. We prefix `context`, never `goal`: the goal stays
+# exactly what the parent wrote.
+#
+# The brief text is NOT copied here — `tokenade subagent-brief`
+# builds it and counts the overhead once, as for the five other
+# bridges.
+def _brief_subagent(bin_path, *_args, tool_name=None, args=None, **_kw):
+    try:
+        if not isinstance(args, dict):
+            return None
+        name = str(tool_name or "").lower()
+        if "delegate" not in name and "task" not in name and "agent" not in name:
+            return None
+        targets = []
+        if isinstance(args.get("tasks"), list):
+            targets = [t for t in args["tasks"] if isinstance(t, dict)]
+        else:
+            targets = [args]
+        for t in targets:
+            original = t.get("context")
+            if not isinstance(original, str):
+                original = ""
+            proc = subprocess.run(
+                [bin_path, "subagent-brief"],
+                input=original,
+                capture_output=True,
+                text=True,
+                timeout=_TIMEOUT_S,
+                env=dict(os.environ, TOKENADE_AGENT="hermes"),
+            )
+            out = proc.stdout or ""
+            if proc.returncode == 0 and len(out) > len(original):
+                t["context"] = out
+                _mark("subagent-briefed")
+    except Exception:
+        # fail-open: never block a delegation for a prefix
+        pass
+    return None
+
+
+def _tick(key, *flags):
+    try:
+        subprocess.Popen(
+            [_RESOLVED_BIN or _tokenade_bin(), "session-tick", "--session", key, "--agent", "hermes", *flags],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            # Windows: no console window for a detached child.
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except Exception:
+        pass
+
+
+# Messages each session sent on its last API request, and whether the
+# per-request hook fires at all on this Hermes.
+_HISTORY = {}
+_PER_REQUEST = {"seen": False}
+
+
+def _tick_request(*_args, session_id=None, message_count=None, approx_input_tokens=None, **_kw):
+    # `pre_api_request` (hermes `agent/conversation_loop.py`): once per
+    # API request — the exact call clock. A compression in place
+    # (`compression.in_place`, the default of new configs) keeps the
+    # session id and fires no plugin hook. Within one conversation a
+    # request only grows, so a smaller one was compacted. The request
+    # SIZE is the signal: MEASURED 2026-10-15 on a real hermes 0.18.2
+    # session, a compaction took the request from 55 541 to 39 680
+    # tokens, while in another run eleven compactions left the message
+    # COUNT unchanged. One detached call either way: two could run out
+    # of order.
+    _PER_REQUEST["seen"] = True
+    key = _session_key(session_id)
+    if not key:
+        return None
+    prev_n, prev_t = _HISTORY.get(key, (0, 0))
+    n = message_count if isinstance(message_count, int) else prev_n
+    t = approx_input_tokens if isinstance(approx_input_tokens, int) else prev_t
+    shrunk = n < prev_n or t * 10 < prev_t * 9
+    _HISTORY[key] = (n, t)
+    _tick(key, "--per-call", *(["--reset"] if shrunk else []))
+    return None
+
+def _tick_session(*_args, session_id=None, **_kw):
+    # Older Hermes without `pre_api_request`: one tool call stands for
+    # its API calls. Skipped once the per-request clock runs.
+    if _PER_REQUEST["seen"]:
+        return None
+    key = _session_key(session_id)
+    if key:
+        _tick(key)
+    return None
+
+
 def register(ctx):
     # The whole entry point is defensive: a plugin that raises here could stop
     # Hermes from starting. Never let anything escape.
     try:
         bin_path = _tokenade_bin()
 
-        def transform_tool_result(*args, tool_name=None, result=None, **_kw):  # noqa: C901
-            # Positional- AND keyword-tolerant: Hermes may call hook(name,
-            # result) or hook(result=…, tool_name=…). Recover the two values
-            # from whatever shape arrives; never raise into the host turn.
-            try:
-                if result is None and args:
-                    # Heuristic: the longest string arg is the tool result;
-                    # a shorter string arg is the tool name.
-                    strs = [a for a in args if isinstance(a, str)]
-                    if strs:
-                        result = max(strs, key=len)
-                        if tool_name is None and len(strs) > 1:
-                            tool_name = min(strs, key=len)
-                if not isinstance(result, str):
-                    return None
-                if len(result) > _MAX_CHARS:
-                    return None
-                # The floor below is about FOLDING and about scanning for
-                # secrets, and a document read is neither: the words are in the
-                # FILE, not in what the host handed back. A host that decoded
-                # nothing must not close the door on the extractor.
-                _doc_path = _read_target_path(tool_name, _kw.get("args"))
-                if len(result) < _REDACT_MIN_CHARS and not _doc_path:
-                    return None
-                if _skipped(tool_name) or _looks_binary(result):
-                    return None
-                env = dict(os.environ)
-                # Attribute the saving to the Hermes agent in tokenade's ledger.
-                # Highest-precedence override so a parent agent's env can't
-                # mis-attribute it.
-                env["TOKENADE_AGENT"] = "hermes"
-                # See `_session_key`: without this the repeat-delivery fold is
-                # unreachable, because the binary refuses to claim a context it
-                # was told nothing about.
-                env["TOKENADE_SESSION"] = _session_key(_kw.get("session_id"))
-                # The command behind a shell result. `read -` detects by
-                # CONTENT and content cannot say which program produced it —
-                # measured 2026-08-07, git output came back uncompacted without
-                # this and folded to a quarter with it. Hermes passes the tool
-                # input as `args=`; we were dropping it into `**_kw`.
-                # Documents first: extract from the FILE, not from what the
-                # host made of it. Falls through to the generic fold when
-                # there is nothing to gain.
-                rp = _doc_path
-                if rp:
-                    dp = _run_tokenade(
-                        bin_path,
-                        ["read", rp],
-                        capture_output=True,
-                        encoding="utf-8",
-                        errors="replace",
-                        timeout=_TIMEOUT_S,
-                        env=env,
-                    )
-                    dout = dp.stdout
-                    # Not a fold, so not the fold's rule: with an empty host
-                    # result "is it smaller?" is false for every extraction,
-                    # and the words are dropped for the empty string.
-                    if dp.returncode == 0 and dout and (
-                        len(result) == 0
-                        or len(dout) < len(result)
-                        or _scrubbed(dp.stderr)
-                    ):
-                        _mark("hook-fired")
-                        return dout
-                hint = _command_hint(tool_name, _kw.get("args"))
-                argv = ["read", "-"]
-                if hint:
-                    argv += ["--cmd", hint]
-                proc = _run_tokenade(
-                    bin_path,
-                    argv,
-                    input=result,
-                    capture_output=True,
-                    # Pin UTF-8 (not the locale default) so non-ASCII tool
-                    # output — CJK, accents, emoji — round-trips without
-                    # mojibake.
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=_TIMEOUT_S,
-                    env=env,
-                )
-                out = proc.stdout
-                # Only replace when the result got strictly SHORTER. `auto -`
-                # may echo an unchanged input back verbatim (+ a trailing
-                # newline) when nothing folds — returning that would hand the
-                # model a LONGER string. "Never make it worse" beats reclaiming
-                # the rare token-shorter-but-char-longer reflow.
-                if proc.returncode == 0 and out and (len(out) < len(result) or _scrubbed(proc.stderr)):
-                    _mark("hook-fired")
-                    return out
-            except Exception:
-                # Any failure -> return None so Hermes keeps the original.
-                pass
-            return None
-
-        # `pre_tool_call` — the only moment a delegation's arguments are
-        # still modifiable. Hermes passes the SAME `args` dict the executor
-        # will use next (`model_tools.py` calls
-        # `resolve_pre_tool_block(function_name, function_args, …)` and
-        # `_get_pre_tool_call_directive_details` forwards it without a copy),
-        # so an in-place mutation lands in the real call.
-        #
-        # The tool is `delegate_task`, whose schema carries `goal` (the task)
-        # and `context` (what the child must know), in single form or batched
-        # under `tasks`. We prefix `context`, never `goal`: the goal stays
-        # exactly what the parent wrote.
-        #
-        # The brief text is NOT copied here — `tokenade subagent-brief`
-        # builds it and counts the overhead once, as for the five other
-        # bridges.
-        def brief_subagent(*_args, tool_name=None, args=None, **_kw):
-            try:
-                if not isinstance(args, dict):
-                    return None
-                name = str(tool_name or "").lower()
-                if "delegate" not in name and "task" not in name and "agent" not in name:
-                    return None
-                targets = []
-                if isinstance(args.get("tasks"), list):
-                    targets = [t for t in args["tasks"] if isinstance(t, dict)]
-                else:
-                    targets = [args]
-                for t in targets:
-                    original = t.get("context")
-                    if not isinstance(original, str):
-                        original = ""
-                    proc = subprocess.run(
-                        [bin_path, "subagent-brief"],
-                        input=original,
-                        capture_output=True,
-                        text=True,
-                        timeout=_TIMEOUT_S,
-                        env=dict(os.environ, TOKENADE_AGENT="hermes"),
-                    )
-                    out = proc.stdout or ""
-                    if proc.returncode == 0 and len(out) > len(original):
-                        t["context"] = out
-                        _mark("subagent-briefed")
-            except Exception:
-                # fail-open: never block a delegation for a prefix
-                pass
-            return None
+        transform_tool_result = functools.partial(_transform_tool_result, bin_path)
 
         try:
-            ctx.register_hook("pre_tool_call", brief_subagent)
+            ctx.register_hook("pre_tool_call", functools.partial(_brief_subagent, bin_path))
         except Exception:
             pass
 
-        def _tick(key, *flags):
-            try:
-                subprocess.Popen(
-                    [_RESOLVED_BIN or _tokenade_bin(), "session-tick", "--session", key, "--agent", "hermes", *flags],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                    # Windows: no console window for a detached child.
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-            except Exception:
-                pass
-
-        # Messages each session sent on its last API request, and whether the
-        # per-request hook fires at all on this Hermes.
-        history = {}
-        per_request = {"seen": False}
-
-        def tick_request(*_args, session_id=None, message_count=None, approx_input_tokens=None, **_kw):
-            # `pre_api_request` (hermes `agent/conversation_loop.py`): once per
-            # API request — the exact call clock. A compression in place
-            # (`compression.in_place`, the default of new configs) keeps the
-            # session id and fires no plugin hook. Within one conversation a
-            # request only grows, so a smaller one was compacted. The request
-            # SIZE is the signal: MEASURED 2026-10-15 on a real hermes 0.18.2
-            # session, a compaction took the request from 55 541 to 39 680
-            # tokens, while in another run eleven compactions left the message
-            # COUNT unchanged. One detached call either way: two could run out
-            # of order.
-            per_request["seen"] = True
-            key = _session_key(session_id)
-            if not key:
-                return None
-            prev_n, prev_t = history.get(key, (0, 0))
-            n = message_count if isinstance(message_count, int) else prev_n
-            t = approx_input_tokens if isinstance(approx_input_tokens, int) else prev_t
-            shrunk = n < prev_n or t * 10 < prev_t * 9
-            history[key] = (n, t)
-            _tick(key, "--per-call", *(["--reset"] if shrunk else []))
-            return None
-
-        def tick_session(*_args, session_id=None, **_kw):
-            # Older Hermes without `pre_api_request`: one tool call stands for
-            # its API calls. Skipped once the per-request clock runs.
-            if per_request["seen"]:
-                return None
-            key = _session_key(session_id)
-            if key:
-                _tick(key)
-            return None
-
-        for name, fn in (("pre_api_request", tick_request), ("pre_tool_call", tick_session)):
+        for name, fn in (("pre_api_request", _tick_request), ("pre_tool_call", _tick_session)):
             try:
                 ctx.register_hook(name, fn)
             except Exception:
                 pass
-
 
         # Register under every candidate name; whichever Hermes supports wins,
         # unknown names are caught and ignored. Record that at least one

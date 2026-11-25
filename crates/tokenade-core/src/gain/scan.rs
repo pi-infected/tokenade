@@ -726,7 +726,7 @@ pub fn canonical_estimated_class<'a>(class: Option<&'a str>, op: &'a str) -> &'a
 pub fn estimated_class_is_cap_exempt(class: &str) -> bool {
     matches!(
         class,
-        "compounding" | "batching" | "overhead" | "output" | "output_lean" | "light-agent"
+        "compounding" | "batching" | "overhead" | "output" | "output_lean"
     )
 }
 

@@ -158,7 +158,7 @@ pub(crate) fn focus(name: &str) {
     };
     let day_pct = |v: u64| 100.0 * v as f64 / total.max(1) as f64;
     let mut days: Vec<_> = by_day.iter().map(|(d, v)| (*v, *d)).collect();
-    days.sort_by(|a, b| b.0.cmp(&a.0));
+    days.sort_by_key(|b| std::cmp::Reverse(b.0));
     let day_share = top_share(&by_day);
     println!(
         "  {} days; the heaviest carries {:.0}% of the residue",
@@ -180,7 +180,7 @@ pub(crate) fn focus(name: &str) {
         );
     }
     let mut sessions: Vec<_> = by_sess.iter().map(|(s, v)| (*v, s.clone())).collect();
-    sessions.sort_by(|a, b| b.0.cmp(&a.0));
+    sessions.sort_by_key(|b| std::cmp::Reverse(b.0));
     for (v, sname) in sessions.iter().take(3) {
         println!(
             "  session {sname:<10} {:>10} bytes  {:.0}%",
@@ -214,7 +214,7 @@ pub(crate) fn focus(name: &str) {
     );
 
     let mut worst = rows.clone();
-    worst.sort_by(|a, b| b.1.cmp(&a.1));
+    worst.sort_by_key(|b| std::cmp::Reverse(b.1));
     println!("  worst events (input → delivered):");
     for (b, a, ts, sname) in worst.iter().take(5) {
         // **The DATE of the event, not only that of the row.** An earlier iteration

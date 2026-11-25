@@ -13,31 +13,6 @@
 use super::*;
 
 impl SemanticIndex {
-    /// Rank documents against `query` with an optional framework boost on
-    /// canonical paths (e.g. Next.js `app/` / `pages/`, Django `views.py`).
-    pub fn search_with_framework(&self, query: &str, limit: usize, fw: Framework) -> Vec<Hit> {
-        let mut hits = self.search(query, limit * 3);
-        if fw != Framework::Unknown {
-            let paths = fw.canonical_paths();
-            for h in hits.iter_mut() {
-                if paths.iter().any(|p| h.file.contains(p)) {
-                    h.score *= 1.25;
-                    if !h.matched.iter().any(|m| m == "framework") {
-                        h.matched.push("framework".into());
-                    }
-                }
-            }
-            hits.sort_by(|a, b| {
-                b.score
-                    .partial_cmp(&a.score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-                    .then_with(|| a.file.cmp(&b.file))
-            });
-        }
-        hits.truncate(limit);
-        hits
-    }
-
     /// Hybrid search with the full v5 pipeline:
     ///   1. BM25 over the inverted index (lexical recall),
     ///   2. cosine over multilingual-e5-small bi-encoder embeddings (the

@@ -435,35 +435,6 @@ pub(crate) fn numbered_bold_headings(text: &str) -> String {
     out
 }
 
-#[cfg(test)]
-mod numbered_bold_titles {
-    use super::numbered_bold_headings;
-
-    #[test]
-    fn a_manual_that_numbers_its_sections_in_bold_has_an_outline() {
-        let page = "**1) Introduction**\n\
-                    **1.1.2) Gimp-Print 4.2** The interim stable release was to become 4.2.\n\
-                    **2) General Requirements** Gutenprint will run on any modern computer.\n\
-                    ***3.3) CUPS*** Gutenprint may be used as a driver under CUPS.\n\
-                    **3. Remove the epson and canon backends.**\n";
-        assert_eq!(
-            numbered_bold_headings(page),
-            "## 1) Introduction\n\
-             #### 1.1.2) Gimp-Print 4.2\nThe interim stable release was to become 4.2.\n\
-             ## 2) General Requirements\nGutenprint will run on any modern computer.\n\
-             ### 3.3) CUPS\nGutenprint may be used as a driver under CUPS.\n\
-             **3. Remove the epson and canon backends.**\n"
-        );
-    }
-
-    /// A numbered list in bold, without nested sections: nothing changes.
-    #[test]
-    fn a_bold_list_is_not_an_outline() {
-        let list = "**1. Install** the package.\n**2. Configure** it.\n**3. Run** it.\n";
-        assert_eq!(numbered_bold_headings(list), list);
-    }
-}
-
 /// Lines that carry SHAPE, not prose: rejoining them destroys the structure the
 /// rest of this module works to preserve.
 pub(crate) fn is_structural_line(l: &str) -> bool {
@@ -491,4 +462,33 @@ pub(crate) fn continues_sentence(line: &str, next: &str) -> bool {
         .chars()
         .next()
         .is_some_and(|c| c.is_lowercase())
+}
+
+#[cfg(test)]
+mod numbered_bold_titles {
+    use super::numbered_bold_headings;
+
+    #[test]
+    fn a_manual_that_numbers_its_sections_in_bold_has_an_outline() {
+        let page = "**1) Introduction**\n\
+                    **1.1.2) Gimp-Print 4.2** The interim stable release was to become 4.2.\n\
+                    **2) General Requirements** Gutenprint will run on any modern computer.\n\
+                    ***3.3) CUPS*** Gutenprint may be used as a driver under CUPS.\n\
+                    **3. Remove the epson and canon backends.**\n";
+        assert_eq!(
+            numbered_bold_headings(page),
+            "## 1) Introduction\n\
+             #### 1.1.2) Gimp-Print 4.2\nThe interim stable release was to become 4.2.\n\
+             ## 2) General Requirements\nGutenprint will run on any modern computer.\n\
+             ### 3.3) CUPS\nGutenprint may be used as a driver under CUPS.\n\
+             **3. Remove the epson and canon backends.**\n"
+        );
+    }
+
+    /// A numbered list in bold, without nested sections: nothing changes.
+    #[test]
+    fn a_bold_list_is_not_an_outline() {
+        let list = "**1. Install** the package.\n**2. Configure** it.\n**3. Run** it.\n";
+        assert_eq!(numbered_bold_headings(list), list);
+    }
 }

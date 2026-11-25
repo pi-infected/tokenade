@@ -29,8 +29,10 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
       - run: node scripts/ci/release.mjs check-version --tag "${{ github.ref_name }}"
@@ -58,21 +60,23 @@ jobs:
           - { target: aarch64-pc-windows-gnullvm, os: ubuntu-latest, kind: llvm-mingw, run: false }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-${{ matrix.target }}
+      # No build cache here: a tag build publishes signed binaries, and a cache
+      # entry written by any other workflow run could feed into them.
 
       - name: zig + cargo-zigbuild
         if: matrix.kind == 'zig'
-        uses: mlugg/setup-zig@v2
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
+          use-cache: false
       - if: matrix.kind == 'zig'
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@893d6ee8d714b6c7dfe2bcd94e5759e9a7958a7e # v2
         with:
           tool: cargo-zigbuild
       - name: lld (host linker for the x86_64-gnu target, .cargo/config.toml)
@@ -130,7 +134,7 @@ jobs:
           exe=tokenade; case "${{ matrix.target }}" in *windows*) exe=tokenade.exe ;; esac
           "dist/${{ matrix.target }}/$exe" --version | grep -F "${{ needs.check.outputs.version }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bin-${{ matrix.target }}
           path: dist/${{ matrix.target }}/
@@ -147,13 +151,15 @@ jobs:
       PRERELEASE: ${{ needs.check.outputs.prerelease }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: bin-*
           path: artifacts

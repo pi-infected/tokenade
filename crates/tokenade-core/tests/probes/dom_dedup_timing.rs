@@ -33,6 +33,8 @@ fn measures_pre_pass_cost() {
 
     // Full pipeline with the pass disabled, then enabled. The env var is read
     // inside the pass, so flipping it here exercises the real code path.
+    // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process per
+    // test, so no other thread reads the environment while it changes.
     unsafe { std::env::set_var("TOKENADE_DOM_DEDUP", "0") };
     let start = Instant::now();
     for page in &pages {
@@ -40,6 +42,8 @@ fn measures_pre_pass_cost() {
     }
     let without = start.elapsed();
 
+    // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process per
+    // test, so no other thread reads the environment while it changes.
     unsafe { std::env::remove_var("TOKENADE_DOM_DEDUP") };
     let start = Instant::now();
     for page in &pages {

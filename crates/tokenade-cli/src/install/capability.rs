@@ -400,10 +400,14 @@ mod tests {
             std::env::set_var("TOKENADE_CAP_UPDATED_TOOL_OUTPUT", "1");
         }
         assert!(claude_supports_updated_tool_output());
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_CAP_UPDATED_TOOL_OUTPUT", "0");
         }
         assert!(!claude_supports_updated_tool_output());
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_CAP_UPDATED_TOOL_OUTPUT", "1");
         }
@@ -411,6 +415,8 @@ mod tests {
             claude_supports_updated_tool_output(),
             "the override was cached — turning it back on did nothing"
         );
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_CAP_UPDATED_TOOL_OUTPUT");
         }

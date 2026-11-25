@@ -23,7 +23,7 @@ use super::*;
 /// only the most recent [`ROTATION_WINDOW_SECS`] of records.
 pub fn record(source: &str, op: &str, label: &str, s: Savings) {
     // Anti-inflation backstop moved INTO record_inner (writers audit: only
-    // this wrapper had it; record_classed/estimated/cmd/light_agent could
+    // this wrapper had it; record_classed/estimated/cmd could
     // all write after>before unguarded).
     record_inner("gain.jsonl", source, op, label, s, None, None, None, None);
 }
@@ -432,45 +432,6 @@ pub fn record_mcp_tool(op: &str, tokens: Savings, bytes_before: usize, bytes_aft
     );
 }
 
-/// Record a light-agent delegation (see `tokenade agent`). The gain is a
-/// different shape from compaction: a zero-cost delegate CONSUMED
-/// `agent_in`+`agent_out` tokens the orchestrator never paid, in exchange
-/// for the `tool_in`+`tool_out` the orchestrator spent framing the task
-/// and reading the answer back. `before` = consumed, `after` = paid, so
-/// `saved` = the net offload. The per-direction split is kept as extra
-/// fields (`agent_in`/`agent_out`/`tool_in`/`tool_out`) so the dashboard
-/// can show input vs output separately. Lands in `gain_estimated.jsonl`
-/// (class `light-agent`) — real counts, but a derived/net saving that the
-/// exact-ledger readers must not fold into compaction totals.
-pub fn record_light_agent(
-    task_kind: &str,
-    model: &str,
-    agent_in: u64,
-    agent_out: u64,
-    tool_in: u64,
-    tool_out: u64,
-) {
-    let consumed = agent_in.saturating_add(agent_out);
-    let paid = tool_in.saturating_add(tool_out);
-    let extra = serde_json::json!({
-        "agent_in": agent_in,
-        "agent_out": agent_out,
-        "tool_in": tool_in,
-        "tool_out": tool_out,
-    });
-    record_inner(
-        "gain_estimated.jsonl",
-        "light-agent",
-        task_kind,
-        model,
-        Savings::new(consumed as usize, paid as usize),
-        None,
-        None,
-        Some("light-agent"),
-        Some(extra),
-    );
-}
-
 /// Ceiling on what ONE ledger row may claim to have saved.
 ///
 /// Calibrated against the real ledger: excluding the media bug this guard was
@@ -761,8 +722,7 @@ pub(super) fn record_inner(
     if let Some(c) = class {
         line["class"] = serde_json::Value::from(c);
     }
-    // `extra` merges caller-supplied fields onto the row (e.g. the
-    // light-agent's `agent_in`/`agent_out`/`tool_in`/`tool_out` split).
+    // `extra` merges caller-supplied fields onto the row.
     // Only object values are merged; anything else is ignored.
     if let Some(serde_json::Value::Object(map)) = extra {
         if let serde_json::Value::Object(dst) = &mut line {

@@ -133,7 +133,6 @@ mod tests {
             model_used: Some("claude-sonnet-4-6".into()),
             dollars_saved: 1.23,
             wrapped_mcps: vec![],
-            light_agent: LightAgentStats::default(),
         }
     }
 

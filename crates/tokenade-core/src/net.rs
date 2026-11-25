@@ -527,7 +527,7 @@ pub trait StreamSink {
     fn chunk(&mut self, bytes: &[u8]) -> bool;
 }
 
-/// POST `body` to `url` and hand the response back INCREMENTALLY.
+/// Send `body` to `url` with `method` and hand the response back INCREMENTALLY.
 ///
 /// The one primitive [`http_get_stream`] cannot provide and the LLM proxy
 /// cannot do without: a request with headers and a body, whose response head
@@ -536,34 +536,15 @@ pub trait StreamSink {
 /// proxy uses that when its own client hangs up, so a dead agent stops us
 /// paying to finish downloading an answer nobody will read.
 ///
+/// The METHOD is the caller's: the proxy once relayed every request as a POST,
+/// so Codex's `GET /models` came back 405 and its model list never refreshed.
+///
 /// **The timeouts differ from every other call in this module on purpose.**
 /// [`infra_client`] sets `.timeout()`, a deadline on the WHOLE request, which
 /// is right for fetching a manifest and catastrophic here: a model that thinks
 /// for two minutes before answering would be cut off mid-sentence. What must be
 /// bounded is silence, not duration, so this uses `read_timeout` — the gap
 /// between two bytes.
-pub fn http_post_stream(
-    url: &str,
-    headers: &[(&str, &str)],
-    body: Vec<u8>,
-    connect_timeout_secs: u64,
-    idle_timeout_secs: u64,
-    sink: &mut dyn StreamSink,
-) -> Result<(), String> {
-    http_stream(
-        "POST",
-        url,
-        headers,
-        body,
-        connect_timeout_secs,
-        idle_timeout_secs,
-        sink,
-    )
-}
-
-/// [`http_post_stream`] with the caller's METHOD. The LLM proxy relayed every
-/// request as a POST: Codex's `GET /models` reached the provider as a POST
-/// and came back 405, so its model list never refreshed through the proxy.
 pub fn http_stream(
     method: &str,
     url: &str,

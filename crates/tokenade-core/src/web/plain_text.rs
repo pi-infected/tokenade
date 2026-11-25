@@ -165,14 +165,6 @@ pub fn text_body_to_markdown(body: &str, content_type: Option<&str>) -> String {
     html_to_markdown(body)
 }
 
-/// [`distill_text`] + token savings.
-pub fn distill_text_with_savings(
-    body: &str,
-    content_type: Option<&str>,
-) -> (String, crate::Savings) {
-    distill_text_with_savings_from(body, content_type, tokenizer::estimate(body))
-}
-
 /// [`distill_text_with_savings`] when the caller has ALREADY counted `body`.
 /// Tokenising a full page costs ~4 ms; the pipeline had counted the same bytes
 /// twice before reaching here.

@@ -222,7 +222,7 @@ pub(super) fn hn_item(body: &str) -> Option<String> {
         meta.push(format!("by {a}"));
     }
     if let Some(d) = v.get("created_at").and_then(|d| d.as_str()) {
-        meta.push(d[..d.len().min(10)].to_string());
+        meta.push(crate::caps::truncate_at_char_boundary(d, 10).to_string());
     }
     if !meta.is_empty() {
         out.push_str(&format!("> {} — news.ycombinator.com\n", meta.join(" • ")));

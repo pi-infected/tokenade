@@ -23,7 +23,6 @@
 //! re-walking the tree.
 
 use crate::embedding::EmbedError;
-use crate::framework::Framework;
 use crate::index::{is_skip_dir_name, Index};
 use crate::reranker::RerankError;
 use serde::{Deserialize, Serialize};

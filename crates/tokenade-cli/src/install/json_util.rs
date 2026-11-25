@@ -8,6 +8,20 @@ use crate::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Get-or-create `obj[key]` as an object, replacing a non-object value. A
+/// user file may hold `"hooks": []` or `null`; unwrapping `as_object_mut()`
+/// on what `entry().or_insert()` returned panicked the installer on it.
+pub(crate) fn ensure_object_entry<'a>(
+    obj: &'a mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> &'a mut serde_json::Map<String, serde_json::Value> {
+    let v = obj.entry(key).or_insert(serde_json::json!({}));
+    if !v.is_object() {
+        *v = serde_json::json!({});
+    }
+    v.as_object_mut().expect("ensured object two lines up")
+}
+
 /// Defensive `entry().or_insert([]).as_array_mut().unwrap()` (#486).
 /// If the user has hand-edited `~/.claude/settings.json` and parked a
 /// non-array value (object, string, number) at `hooks.PreToolUse`

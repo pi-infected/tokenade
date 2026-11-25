@@ -292,85 +292,10 @@ pub fn is_indexed(content_hash: &str) -> bool {
     .is_ok()
 }
 
-/// Build (and persist) the chunk index for `content`. Idempotent —
-/// re-indexing a content-hash already present is a no-op. Returns
-/// the chunk count. Auto-evicts stale chunks (TTL miss) before
-/// indexing, so the DB doesn't accumulate dead versions of files
-/// the user keeps editing.
-/// The text that reaches BOTH the chunk store and the embedder.
-///
-/// Redact on the way IN, not on the way out. `file_chunks` keeps the file's own
-/// text in `~/.tokenade/file_search.db`, a global store outside the repository,
-/// so a credential written in the source is copied there whole. Scrubbing it
-/// afterwards is a treadmill: the next question about that file re-indexes it
-/// and puts the secret back.
-///
-/// One function for both, deliberately. The embedding is computed from the same
-/// string that is stored, so the vector and the snippet keep describing the same
-/// words; redacting only the text would leave the two disagreeing about a chunk
-/// that can still be retrieved.
-fn storable_text(chunks: &[(usize, usize, String)]) -> Vec<String> {
-    chunks
-        .iter()
-        .map(|(_, _, s)| crate::redact::redact(s))
-        .collect()
-}
-
-pub fn index_content(content_hash: &str, content: &str) -> Result<usize, FileSearchError> {
-    if is_indexed(content_hash) {
-        let conn = open()?;
-        let n: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM file_chunks WHERE content_hash=?1",
-            params![content_hash],
-            |r| r.get(0),
-        )?;
-        // Touch on cache hit so an actively-used file's chunks survive
-        // future evict passes even when the file content stays stable.
-        let _ = conn.execute(
-            "UPDATE file_chunks SET last_accessed=?1 WHERE content_hash=?2",
-            params![crate::platform::now_unix_secs() as i64, content_hash],
-        );
-        return Ok(n as usize);
-    }
-    // Cache miss → opportunistic stale-eviction. Keeps the DB from
-    // growing unboundedly when the same file (different content
-    // hash) gets re-indexed repeatedly across edit cycles.
-    let _ = evict_stale();
-    let chunks = chunk_lines(content);
-    if chunks.is_empty() {
-        return Ok(0);
-    }
-    let snippets = storable_text(&chunks);
-    let embeddings = crate::embedding::embed_batch(&snippets)?;
-    let mut conn = open()?;
-    let tx = conn.transaction()?;
-    let now = crate::platform::now_unix_secs() as i64;
-    for (i, ((line_start, line_end, _raw), vec)) in chunks.iter().zip(embeddings.iter()).enumerate()
-    {
-        tx.execute(
-            "INSERT OR IGNORE INTO file_chunks(content_hash, chunk_id, line_start, line_end, snippet, last_accessed)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
-            params![content_hash, i as i64, *line_start as i64, *line_end as i64, &snippets[i], now],
-        )?;
-        let rowid: i64 = tx.query_row(
-            "SELECT rowid FROM file_chunks WHERE content_hash=?1 AND chunk_id=?2",
-            params![content_hash, i as i64],
-            |r| r.get(0),
-        )?;
-        let bytes = crate::sqlite_vec_util::vec_f32_as_bytes(vec);
-        tx.execute(
-            "INSERT INTO file_chunk_vec(rowid, embedding) VALUES(?1, ?2)",
-            params![rowid, bytes],
-        )?;
-    }
-    tx.commit()?;
-    Ok(chunks.len())
-}
-
 /// Drop chunks whose `last_accessed` is older than [`CACHE_TTL_SECS`].
 /// Returns the number of chunk rows removed. The corresponding vec
-/// rows are deleted in the same transaction. Called opportunistically
-/// from `index_content` on cache miss; can also be invoked manually.
+/// rows are deleted in the same transaction. Called by the maintenance
+/// sweeps, since nothing writes to this store any more.
 pub fn evict_stale() -> Result<usize, FileSearchError> {
     let mut conn = open()?;
     let cutoff = crate::platform::now_unix_secs().saturating_sub(CACHE_TTL_SECS) as i64;
@@ -457,9 +382,9 @@ pub fn purge_containing(needle: &str, dry_run: bool) -> (usize, usize) {
 /// dry run, matched).
 ///
 /// The needle-free sibling of [`purge_containing`]: it does not know WHICH
-/// secret leaked, only that the patterns recognise one. Chunks written since
-/// `index_content` started redacting cannot match, so on a current install this
-/// finds nothing; it exists for the ones written before.
+/// secret leaked, only that the patterns recognise one. The last versions that
+/// wrote chunks redacted them first, so this only finds the ones written
+/// before that.
 pub fn purge_redactable(dry_run: bool) -> usize {
     // See `dedup_ref::scrub_via_redact_inner`: opening creates the file, and
     // a dry run must not.

@@ -13,23 +13,6 @@ bpe = ["tokenade-core/bpe"]
 # See `tokenade-core`'s feature of the same name: a browser TLS fingerprint
 # for the last rung of the web-fetch ladder. Off by default (BoringSSL).
 impersonate = ["tokenade-core/impersonate"]
-# The `tokenade agent` sub-agent feature (free-provider chain + sandboxed
-# runner + fire/follow/collect CLI). WORK IN PROGRESS, PAUSED 2026-07: benched
-# net-negative — delegation added latency and turns without beating direct
-# compacted exploration, with many trap cases — and no approach to local
-# exploration agents has earned its place yet. The direction is unproven, not
-# merely unfinished. Kept compilable behind this flag (complex code, may come
-# back); the DEFAULT build compiles none of `src/agent/`, ships no
-# `agent`/`local-serve` command and no scaffold mention. See src/agent/mod.rs.
-light-agent = []
-# Local in-process inference engine for light-agents (llama.cpp via llama-cpp-4,
-# runs a small GGUF model — e.g. MiniCPM5-1B — on CPU on any machine). OFF by
-# default: it links llama.cpp (needs a C/C++ toolchain + cmake at build time and
-# adds tens of MB to the binary), so the npm-distributed default stays lean.
-# Implies `light-agent` (it is the local engine OF the agent feature).
-# RAM: `local::n_ctx` defaults to the model's full trained context — ~6 GB of KV
-# cache on Qwen3-4B. Set TOKENADE_LOCAL_CTX. See src/agent/mod.rs.
-local-llm = ["light-agent", "dep:fs2", "dep:tokenade-llama-sys", "dep:minijinja", "dep:minijinja-contrib"]
 
 [[bin]]
 name = "tokenade"
@@ -37,23 +20,12 @@ path = "src/main.rs"
 
 [dependencies]
 base64 = { workspace = true }
-# Only the local-llm server's cross-process single-flight lock needs this, so it
-# stays optional: the default binary ships no `local-serve` and must not link it.
-fs2 = { workspace = true, optional = true }
 tokenade-core = { path = "../tokenade-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 toml_edit = "0.22"
 notify = { workspace = true }
-# Optional: in-tree FFI to a freshly-built llama.cpp (the `local-llm` feature).
-tokenade-llama-sys = { path = "../tokenade-llama-sys", optional = true }
-# Render a model's embedded Jinja chat template (llama.cpp's C API only handles
-# a fixed set of built-in templates; new models like MiniCPM5 ship custom Jinja).
-minijinja = { version = "2", optional = true, features = ["json"] }
-# Python-compatible string methods (startswith/split/strip…) used by real chat
-# templates (e.g. MiniCPM5) — wired via minijinja's unknown-method callback.
-minijinja-contrib = { version = "2", optional = true, features = ["pycompat"] }
 
 [dev-dependencies]
 # `srcsweep` is the ONE declarer for "the half of a file that ships"; the

@@ -1,0 +1,11 @@
+# The workflows pin every action to a full commit SHA (a moved tag cannot
+# swap the code a release runs). Dependabot keeps those pins current.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

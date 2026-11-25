@@ -83,7 +83,7 @@ pub(crate) fn cmd_scan_savings(rest: &[String]) -> i32 {
         .as_deref()
         .and_then(tokenade_core::model_costs::cost_for_model)
         .map(|c| c.usd(saved, 0, 0, 0));
-    per_project.sort_by(|a, b| b.1.cmp(&a.1));
+    per_project.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     if json {
         let payload = serde_json::json!({

@@ -1,0 +1,1659 @@
+# Faux positifs déclarés pour qcheck (voir docs/configuration.md de qcheck).
+# Un bloc [[ignore]] = une famille fausse au même endroit, avec sa preuve ;
+# une entrée [[false_positive]] = un constat lu et jugé faux, avec sa preuve.
+# Revue du 2026-11-26 sur le scan complet de ae7f534.
+
+[[ignore]]
+rules = ["cargo-shear:shear/unlinked_files"]
+paths = ["crates/tokenade-core/src/cmd/**"]
+reason = "relié par un `mod` généré : build.rs parcourt cmd/<os>/ et écrit un `mod` par fichier dans OUT_DIR, inclus par cmd/mod.rs:51 (`include!(concat!(env!(\"OUT_DIR\"), \"/cmd_auto_dispatch.rs\"))`) ; cargo-shear ne lit pas les modules générés"
+
+[[ignore]]
+rules = ["gitleaks:*", "aislop:ai-slop/hardcoded-id", "aislop:ai-slop/todo-stub", "aislop:ai-slop/rust-todo-stub", "aislop:ai-slop/generic-naming"]
+paths = ["**/*_tests.rs", "**/tests/**", "crates/tokenade-cli/src/tests/**", "**/fixtures/**", "benchmarks/fixtures/**"]
+reason = "données de test : faux secrets que le moteur de rédaction (tk-base/src/redact) doit masquer, pages et sorties capturées, sources-fixtures ; aucun n'est une vraie clé ni du code livré"
+
+[[ignore]]
+rules = ["architecture:same-name-function", "architecture:scattered-literal", "similarity:similar-function", "jscpd:clone"]
+paths = ["crates/tokenade-cli/assets/**"]
+reason = "chaque passerelle (cline, opencode, openclaw, pi, hermes) est UN fichier autonome copié dans le dossier de plugins d'un hôte différent : aucun module commun importable ; leur parité est vérifiée par tests/e2e/bridges.rs"
+
+[[ignore]]
+rules = ["test-reach:untested-function"]
+paths = ["crates/tokenade-cli/assets/**", "crates/tokenade-core/src/js/**"]
+reason = "exécutés par les tests Rust à travers node, python ou QuickJS (tests/e2e/bridges.rs lance chaque passerelle, js_render.rs exécute driver/harvest/shim) : l'atteinte statique ne traverse pas le changement de langage"
+
+[[ignore]]
+rules = ["ruff:BLE001", "ruff:S112", "aislop:ai-slop/swallowed-exception", "aislop:ai-slop/python-broad-except", "ast-grep:except-return-static-sentinel", "ast-grep:sentinel-fallback-function", "ast-grep:len-as-condition", "vulture:unused-function"]
+paths = ["crates/tokenade-cli/assets/hermes_plugin/**"]
+reason = "contrat du plugin d'hôte : une exception qui sort de register() ou d'un hook arrête Hermes ou le tour en cours, donc chaque hook rend None (= garder l'original) ; register() est appelé par Hermes, d'où l'« inutilisé » de vulture"
+
+[[ignore]]
+rules = ["slop-scan:*"]
+paths = ["npm/**", "crates/tokenade-cli/assets/**", "crates/tokenade-core/src/js/**"]
+reason = "replis voulus : l'installeur npm ne doit jamais faire échouer npm (uninstall.js:75 sort toujours 0), une passerelle ne lève jamais dans l'hôte, harvest.js lit des objets de page dont Object.keys peut lever (proxys)"
+
+[[ignore]]
+rules = ["dependency-cruiser:*", "deptry:*"]
+paths = ["benchmarks/fixtures/**"]
+reason = "mini-projets de banc sans dépendances installées : ils servent d'entrée à `tokenade map`/`skeleton`, jamais construits"
+
+[[ignore]]
+rules = ["aislop:ai-slop/meta-comment"]
+paths = ["**"]
+reason = "convention du dépôt : un commentaire garde la cause mesurée et la panne passée (« used to », « MEASURED »), c'est ce qui empêche de réintroduire le défaut ; aucun n'est un commentaire creux"
+
+[[ignore]]
+rules = ["eslint:@typescript-eslint/no-explicit-any"]
+paths = ["crates/tokenade-cli/assets/**"]
+reason = "les hôtes (opencode, cline, pi) ne publient pas de types pour l'objet passé au plugin ; le fichier est chargé tel quel par l'hôte, sans étape de compilation où des types serviraient"
+
+[[ignore]]
+rules = ["hadolint:DL3008", "hadolint:DL3016"]
+paths = ["docs/demo/Dockerfile"]
+reason = "image de démo reconstruite à la main pour enregistrer la vidéo ; politique du projet : pas d'épinglage de versions non demandé"
+
+[[ignore]]
+rules = ["cargo-shear:shear/unlinked_files"]
+paths = ["crates/tokenade-core/tests/support/**", "crates/tokenade-cli/src/tests/mod.rs"]
+reason = "montés par `#[path = \"../support/…\"] mod …;` (tests/fold/main.rs:22, tests/web/main.rs:12, tests/hostile/main.rs:12) et par include!(\"main_tests.rs\") (main.rs:706)"
+
+[[false_positive]]
+id = "17cc144a2307be1b"
+rule = "zizmor:cache-poisoning"
+file = ".github/workflows/release.yml:7"
+reason = "actions/setup-node v4 (49933ea, action.yml:24) n'a pas d'entrée package-manager-cache : il ne met en cache que si `cache:` est donné, et il ne l'est pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3f3930dd009d8ebc"
+rule = "zizmor:cache-poisoning"
+file = ".github/workflows/release.yml:7"
+reason = "actions/setup-node v4 (49933ea, action.yml:24) n'a pas d'entrée package-manager-cache : il ne met en cache que si `cache:` est donné, et il ne l'est pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "72f586f489327a4d"
+rule = "zizmor:cache-poisoning"
+file = ".github/workflows/release.yml:7"
+reason = "actions/setup-node v4 (49933ea, action.yml:24) n'a pas d'entrée package-manager-cache : il ne met en cache que si `cache:` est donné, et il ne l'est pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bcfea37e4e09422d"
+rule = "zizmor:cache-poisoning"
+file = ".github/workflows/release.yml:7"
+reason = "actions/setup-node v4 (49933ea, action.yml:24) n'a pas d'entrée package-manager-cache : il ne met en cache que si `cache:` est donné, et il ne l'est pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ad2deb98d71ba08c"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/core.rs:33"
+reason = "WARM_BLOCKS (redact/core.rs:31) : textes factices qui chauffent les regex de rédaction (« warmupuser:warmuppassword » en base64) ; aucune vraie clé"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0a3dad89f0b4dab2"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/core.rs:34"
+reason = "WARM_BLOCKS (redact/core.rs:31) : textes factices qui chauffent les regex de rédaction (« warmupuser:warmuppassword » en base64) ; aucune vraie clé"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d28e4a9d47474f75"
+rule = "eslint:sonarjs/code-eval"
+file = "crates/tokenade-core/src/js/driver.js:86"
+reason = "exécution voulue : driver.js tourne dans QuickJS isolé (js_render.rs), sans accès au système ; il rejoue les scripts de la page pour en lire le rendu"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7ebcf1fb0d2211d9"
+rule = "semgrep:typescript.react.security.audit.react-unsanitized-method.react-unsanitized-method"
+file = "crates/tk-agents/src/webdash/dashboard.js:621"
+reason = "chaque rowHtml échappe ses valeurs par esc() (dashboard.js:196, appels 666, 728, 739) ; les nombres passent par fmt()"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "774de1ea7f49b13b"
+rule = "slop-scan:defensive.empty-catch"
+file = "npm/uninstall.js:71"
+reason = "dernier filet : console.error lui-même a échoué dans le catch du filet (uninstall.js:71) ; npm doit pouvoir retirer le paquet quoi qu'il arrive"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7c9ac878fb027a4e"
+rule = "eslint:sonarjs/no-os-command-from-path"
+file = "crates/tokenade-cli/assets/opencode_plugin/tokenade.ts:111"
+reason = "le binaire vient d'abord de TOKENADE_BIN ou du chemin absolu injecté à l'installation ; « tokenade » nu n'est cherché dans le PATH qu'en dernier recours, comme l'hôte le ferait"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "db59a08451963971"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:416"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "98fccb9bfd5f964b"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:470"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6f2121df67bdef64"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:478"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "011ca3b4ff809433"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:499"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "23a27f6a3d2eca32"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:625"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2bef9b256c68f495"
+rule = "gitleaks:generic-api-key"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:627"
+reason = "dans le module #[cfg(test)] ouvert à keyword_assignments.rs:386 : entrées que la rédaction doit masquer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d43ab83417434f8a"
+rule = "eslint:sonarjs/no-os-command-from-path"
+file = "crates/tokenade-cli/assets/cline_plugin/tokenade.ts:71"
+reason = "le binaire vient d'abord de TOKENADE_BIN ou du chemin absolu injecté à l'installation ; « tokenade » nu n'est cherché dans le PATH qu'en dernier recours, comme l'hôte le ferait"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "706e51ae9d91f9d1"
+rule = "eslint:sonarjs/hashing"
+file = "crates/tokenade-cli/assets/cline_plugin/tokenade.ts:263"
+reason = "SHA-1 sert de clé de mémo pour un texte déjà en mémoire (cline tokenade.ts:263), aucun usage de sécurité"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "eeae66f1f1b0c859"
+rule = "eslint:sonarjs/no-os-command-from-path"
+file = "crates/tokenade-cli/assets/openclaw_plugin/index.js:91"
+reason = "le binaire vient d'abord de TOKENADE_BIN ou du chemin absolu injecté à l'installation ; « tokenade » nu n'est cherché dans le PATH qu'en dernier recours, comme l'hôte le ferait"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "9b8af6dc11c88555"
+rule = "eslint:sonarjs/no-os-command-from-path"
+file = "crates/tokenade-cli/assets/pi_extension/tokenade.ts:93"
+reason = "le binaire vient d'abord de TOKENADE_BIN ou du chemin absolu injecté à l'installation ; « tokenade » nu n'est cherché dans le PATH qu'en dernier recours, comme l'hôte le ferait"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3e009d7f1d522462"
+rule = "aislop:ai-slop/empty-function"
+file = "crates/tokenade-core/src/js/shim.js:435"
+reason = "stub d'API navigateur dans shim.js : il doit exister et ne rien faire pour que les scripts de page tournent dans QuickJS"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6d96003b7c421667"
+rule = "aislop:ai-slop/empty-function"
+file = "crates/tokenade-core/src/js/shim.js:471"
+reason = "stub d'API navigateur dans shim.js : il doit exister et ne rien faire pour que les scripts de page tournent dans QuickJS"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ba00ff65cef4bc3f"
+rule = "eslint:sonarjs/file-permissions"
+file = "npm/install.js:419"
+reason = "chmod 0o755 du binaire installé (npm/install.js:419) : il doit être exécutable, et rien d'autre n'est rendu inscriptible"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "82aab67901605f42"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/dashboard_cli/gain.rs:541"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3e05c870a0b8c402"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks.rs:42"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "77f645917c962dfc"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks.rs:48"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "43ccc54d9bc1906c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks.rs:147"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "92030d381f842702"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks.rs:180"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "dcf3f48296df513f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-agents/src/style.rs:250"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "235fff86eadc2c00"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/cards.rs:85"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "fb7e855b3a8a9890"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/cards.rs:112"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "12ade6718e51781a"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/entropy.rs:57"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "33af83658237361e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/entropy.rs:224"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2ff70c5f01d729f3"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/entropy.rs:227"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "67107a6e786b8c18"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/keyword_assignments.rs:331"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a924d757b2bb1c0c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/pii.rs:84"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a2304f36b854f031"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/redact/pii.rs:295"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e538085c51a391f0"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-base/src/source_guard.rs:311"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7e028f5b2ab93ff4"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-fold/src/template_fold.rs:113"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e7f391061fc789c3"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-formats/src/graphql.rs:298"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5af83b5c4533d6d3"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tk-formats/src/post_passes.rs:406"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "221d0459a9832867"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/diag.rs:48"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a6a933851ff332b2"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/diag.rs:61"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "44aab284854cd08d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/diag.rs:63"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "469263520103677a"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/diag.rs:67"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a668f2be6219a5f6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/page_loss.rs:145"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "86f53efc030a2e97"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/page_loss.rs:248"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "305ff93d899c3f7c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/page_loss.rs:251"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "fe5bfade660f7e31"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/code_intel.rs:289"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "f58b4b8d1a508f5d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/code_intel.rs:291"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e0cea89ea28cfa7e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/code_intel/impact.rs:310"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0ddf8ea44fcebabe"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/code_intel/map.rs:175"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "dc50cb573b20b6d0"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/code_intel/map.rs:403"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6f3bf5dba4c373ef"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/dashboard_cli.rs:366"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "cebd268d6c2cd66e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/diagnostics_cli.rs:59"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "4e2c1b6559873e0d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/diagnostics_cli.rs:271"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "92ab72989d006028"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/diagnostics_cli/hooks_status.rs:158"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "620bc5fc557175e4"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/diagnostics_cli/hooks_status.rs:268"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5f48320b929ea43d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/feature_cli.rs:197"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d85e13a9aab3b5ae"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/feature_cli.rs:256"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "095bf942a4a08f89"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/feature_cli/execute.rs:132"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a060d8dea5a3a564"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/feature_cli/packing.rs:602"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c8b0761efa239a0d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/healthcheck.rs:229"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "09ecbb668b5ec722"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/healthcheck/audit.rs:65"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "03f764617f8072c6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/healthcheck/audit.rs:98"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "9720603ffb21877f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/healthcheck/audit.rs:122"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0c22d068360354f1"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/healthcheck/audit.rs:177"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "28915d3739d79bb4"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/hooks/bash_pretool/shell_chain.rs:41"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0c5d13377f989354"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/hooks/read_pretool/images.rs:348"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d6e9772de67cd5e9"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/autocompact.rs:223"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "8c32d06e547fadcd"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:29"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ac4c60db0395786e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:36"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "1e748a164e2240bc"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:93"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "54518319aef3c137"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:164"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ec75d235acb33ca8"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:171"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "23048f63cb9e7359"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:235"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "937e6e023ccdbf1e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:264"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "22f2cf5046f484ca"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:270"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c197823bbe870246"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:324"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6398e96700cfd629"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:354"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "f1e9d28cd9c8c628"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:360"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "124171cd026aa5df"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:416"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2320fd652353c853"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:467"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2530a061139f9af0"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:474"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3dcfca66d2040530"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/claude_hooks/entries.rs:545"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bdbbf9dfa6377c3d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:94"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e5f348c9084ae696"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:134"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "96375674900c13d6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/hook_util.rs:95"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3752e3513a0ca9d1"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks.rs:77"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "597bb13485f8fd0a"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks.rs:83"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "86f6a6be20192697"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks.rs:157"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ada6d9c32f23cef0"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:47"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6247d80dcb4d5632"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:55"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "92d491f4a6bde4f8"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:177"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5a953c3d934fc388"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:314"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c0917d3262bffe1f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:320"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "37d6fdad7c132246"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:372"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "aa588857fb98884b"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/lifecycle_hooks/claude_code.rs:436"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5db80d7901f9b909"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:96"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "4228cde8c72afbc1"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:104"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ee56f2fea1e5854c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:110"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "b4963bb76cf2c49e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:190"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "72c8f7489489426d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:198"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bbfc8300694eaaca"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install_cli/agent_plugins/cursor.rs:204"
+reason = "le document a été lu par read_json_object_or_bail (objet garanti) et la valeur rendue objet/tableau juste avant (is_object()/is_array() sinon reset)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2d702cd197e07239"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:43"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "248606ed79b200d6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:60"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0429934fd4ac9369"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:184"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "876abeecfa458e67"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:198"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ead171e6d6e0a61b"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:245"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0377e2b44a0f16c5"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/install/agents_flat.rs:253"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "326aeea222894dc7"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/llm_proxy/wire.rs:525"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "8d3716b4648adbfa"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/semantic_cli.rs:388"
+reason = "sérialiser une serde_json::Value (ou un json!) ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "3dabedcce0722335"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/auto/detectors/shapes.rs:383"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d6a11e6765d0b4ac"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/cmd/windows/dir.rs:76"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "4903f561502ad74f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/docs/rtf.rs:574"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "b2f9ad43c4cc3fc6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/index/extract.rs:13"
+reason = "verrou empoisonné = un autre fil a déjà paniqué ; propager la panique est le comportement voulu"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d22327c2775b58b0"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/index/extract.rs:17"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "79db46e22e80f13e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/serp/engines.rs:126"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "49bf053d7e414656"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/serp/engines.rs:165"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "807a4b224f409f26"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/dev_reference.rs:22"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7717a4eea5524612"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/dev_reference.rs:35"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5f046a588d4d9ae2"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/dev_reference.rs:54"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c28e5c61c965a07f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/reddit.rs:40"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "41383769e124f890"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/reddit.rs:89"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c3270777fc6ec638"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/reddit.rs:109"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5e199fa4bce068bb"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/site_readers/youtube.rs:49"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "76851416cddc8862"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/frames.rs:127"
+reason = "verrou empoisonné = un autre fil a déjà paniqué ; propager la panique est le comportement voulu"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "35791c39ba3698e6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/frames.rs:131"
+reason = "regex littérale compilée une fois (LazyLock/OnceLock) : une erreur serait un bug du motif, attrapé par les tests du module"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c4fdee912ecea55f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/languages.rs:120"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "b7083c936e27630b"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/languages.rs:121"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "046741caf90c1dbb"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/languages.rs:122"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "8a428de24496e5fa"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/languages.rs:193"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2d8380fa9bf8d5fa"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/stacktrace/languages.rs:320"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "fb59ca80b8758c3b"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/static_embed.rs:117"
+reason = "tranche de longueur fixe (8 ou 4 octets) prise après un contrôle de longueur sur la ligne précédente ou par chunks_exact"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c875e2051c68a734"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/static_embed.rs:169"
+reason = "tranche de longueur fixe (8 ou 4 octets) prise après un contrôle de longueur sur la ligne précédente ou par chunks_exact"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "422e20881c4c3df8"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/static_embed.rs:213"
+reason = "chaîne ou liste non vide garantie juste avant (is_empty, len >= N, boucle sur starts_at < size)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5478b9fc5c2122a3"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/static_embed.rs:471"
+reason = "tranche de longueur fixe (8 ou 4 octets) prise après un contrôle de longueur sur la ligne précédente ou par chunks_exact"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "43fa2aef69d2bc18"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/static_embed.rs:502"
+reason = "tranche de longueur fixe (8 ou 4 octets) prise après un contrôle de longueur sur la ligne précédente ou par chunks_exact"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d6302651d76fa8c7"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/cleanup.rs:248"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "babd2840ad9b9cb1"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/cleanup.rs:249"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "10f6047860df7dff"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/cleanup.rs:257"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "478a0fd9473663c6"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:221"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bb3443a85da00a67"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:66"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "203ec7288f734297"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:92"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "fa714466cf4e0ff8"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:237"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "aeb970ee69a77605"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:332"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5d559121bc5b8ba2"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:376"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6b105dc0e4523413"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:393"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "9cd4d684f4531f36"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:403"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c36056142592cbdc"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:404"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "4270888cd91b9290"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/elements.rs:406"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5391f64c6b117154"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/entities.rs:164"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "0ee26269456e892c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/isolate.rs:152"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "115ad91a7f08965a"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/isolate.rs:153"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "55bf3b5e56c03e81"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/navigation.rs:69"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "590dbd8b6c0c5ced"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/navigation.rs:83"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bbdc440decbd26f7"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/prune_tree.rs:21"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "f9d912910abaec54"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/selectors.rs:192"
+reason = "invariant établi juste avant l'appel (clé insérée, Option renseignée par la même branche) ; relu ligne par ligne"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "edf1cca2dd1ee455"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/web/spa_rescue.rs:200"
+reason = "groupe de capture non optionnel d'une regex qui vient de correspondre : toujours présent"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6a48ef9db9f90983"
+rule = "test-reach:untested-function"
+file = "crates/tk-base/src/cachekey.rs:105"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7ea58b908a93a5f3"
+rule = "test-reach:untested-function"
+file = "crates/tk-base/src/crash_guard.rs:251"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "5ada6ca4cb94658c"
+rule = "test-reach:untested-function"
+file = "crates/tk-base/src/platform/files.rs:82"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "165459082ebc1321"
+rule = "test-reach:untested-function"
+file = "crates/tk-base/src/process_util/group.rs:444"
+reason = "Windows seulement : vérifié sur la VM Windows avant chaque release"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2ba4480774674704"
+rule = "test-reach:untested-function"
+file = "crates/tk-base/src/session.rs:29"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "008d6006c63a3307"
+rule = "test-reach:untested-function"
+file = "crates/tk-formats/src/logs.rs:773"
+reason = "appelée par le banc (tokenade-bench/src/benches/adversarial.rs:88), qui mesure cette fonction ; c'est son usage"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "30ef96226468dd48"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-cli/src/commands/argv_helpers.rs:120"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "7c3b86527ad30fc8"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-cli/src/hook_health.rs:84"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "c0966945fb61dd5f"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-cli/src/hook_health.rs:156"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "8109c6a42afd945f"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-cli/src/hooks/webfetch_pretool/notes/disclosure.rs:395"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "32fcb6f632a28fd7"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-core/src/cmd/linux/aws_json.rs:16"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6275de601f5eaad1"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-core/src/gain/nudge_kinds.rs:155"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a8b62a13e44245a5"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-core/src/recalc.rs:143"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "d0858bd29b23d809"
+rule = "test-reach:untested-function"
+file = "crates/tokenade-core/src/updater/decide.rs:28"
+reason = "atteinte par main() ou un point d'entrée de hook ; les tests e2e (crates/tokenade-cli/tests/e2e) lancent le binaire, ce que l'analyse statique ne suit pas"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "a7b5d9405696bc0a"
+rule = "clippy:clippy::format_in_format_args"
+file = "crates/tokenade-cli/tests/e2e/misc.rs:1962"
+reason = "test e2e : la ligne JSONL construite reste lisible ainsi"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "88c22da4471f401f"
+rule = "clippy:clippy::needless_range_loop"
+file = "crates/tokenade-cli/tests/e2e/misc.rs:3104"
+reason = "l'indice sert aussi à lire les voisins ou une plage partielle (lines[k+1], want[i]) : un itérateur cacherait la relation"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "bb80570fdc626419"
+rule = "clippy:clippy::while_let_loop"
+file = "crates/tk-formats/src/post_passes.rs:137"
+reason = "`let … else { break }` dans la boucle garde le corps à plat ; la réécriture en while-let n'apporte rien et éloigne la condition de sortie de son commentaire"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ab49095e6c4cbaef"
+rule = "clippy:clippy::unbuffered_bytes"
+file = "crates/tokenade-cli/src/bounded_input.rs:86"
+reason = "un seul octet lu, une fois, après take(cap), pour savoir si l'entrée continue : rien à bufferiser"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "ca2f4ea6138f1f9c"
+rule = "clippy:clippy::vec_init_then_push"
+file = "crates/tokenade-cli/src/healthcheck.rs:84"
+reason = "chaque push est une étape numérotée et commentée du bilan de santé ; un vec![] de 20 appels perdrait ces repères"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "1d9a5b47f492afcd"
+rule = "clippy:clippy::while_let_loop"
+file = "crates/tokenade-cli/src/install/uninstall/shell_proxy.rs:88"
+reason = "`let … else { break }` dans la boucle garde le corps à plat ; la réécriture en while-let n'apporte rien et éloigne la condition de sortie de son commentaire"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "afb8feb080ddace6"
+rule = "clippy:clippy::needless_range_loop"
+file = "crates/tokenade-core/src/disclose/scoped/packing.rs:52"
+reason = "l'indice sert aussi à lire les voisins ou une plage partielle (lines[k+1], want[i]) : un itérateur cacherait la relation"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "11d9afbf1d9bd6d2"
+rule = "clippy:clippy::needless_range_loop"
+file = "crates/tokenade-core/src/disclose/scoped/packing.rs:113"
+reason = "l'indice sert aussi à lire les voisins ou une plage partielle (lines[k+1], want[i]) : un itérateur cacherait la relation"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "450076f8c7753726"
+rule = "clippy:clippy::needless_range_loop"
+file = "crates/tokenade-core/src/disclose/scoped/packing.rs:161"
+reason = "l'indice sert aussi à lire les voisins ou une plage partielle (lines[k+1], want[i]) : un itérateur cacherait la relation"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "cdc06a2d5c8b2e8e"
+rule = "clippy:clippy::needless_range_loop"
+file = "crates/tokenade-core/src/disclose_tests.rs:88"
+reason = "l'indice sert aussi à lire les voisins ou une plage partielle (lines[k+1], want[i]) : un itérateur cacherait la relation"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e49994736d462361"
+rule = "clippy:clippy::neg_cmp_op_on_partial_ord"
+file = "crates/tokenade-core/src/gain/weigh.rs:188"
+reason = "`!(r.input > 0.0)` est voulu : il rejette aussi NaN, ce que `r.input <= 0.0` laisserait passer"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "316f5523d7d36ff4"
+rule = "clippy:clippy::manual_strip"
+file = "crates/tokenade-core/src/web_tests.rs:1866"
+reason = "test : la tranche reproduit l'entrée exacte qu'il vérifie"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e5d227a0dfad929c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:396"
+reason = "settings vient de read_json_object_or_bail (objet garanti) ; `hooks` est remis à {} s'il n'est pas un objet juste après (register.rs, « Ensure hooks object »)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "2aa940e321a27e6e"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:419"
+reason = "`hooks_obj` vient d'être rendu objet (if !is_object() { reset }) quelques lignes plus haut"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "f9f0b692dfaeda39"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:425"
+reason = "`before_tool` est remis à [] s'il n'est pas un tableau sur la ligne précédente"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "74049a7091eaaead"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:538"
+reason = "settings est un objet (read_json_object_or_bail) et `hooks` y a été créé plus haut ; l'expect le dit"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "e53065b6fe2df97f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:566"
+reason = "sérialiser une serde_json::Value ne peut pas échouer : clés toujours des chaînes"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "f2463512155dba8c"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:595"
+reason = "`hooks_obj` est un objet garanti par l'appelant (créé ou remis à {} avant)"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "185860006c2f58f7"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:601"
+reason = "`arr` est remis à [] s'il n'est pas un tableau sur la ligne précédente"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "aeb75e9ed08bf99d"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-core/src/mcp_compact.rs:302"
+reason = "la boucle de validation au-dessus (mcp_compact.rs, `as_object()?` puis contrôle des colonnes) a déjà rejeté toute ligne qui n'est pas un objet"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "4c32e422b7e3b99f"
+rule = "aislop:ai-slop/rust-non-test-unwrap"
+file = "crates/tokenade-bench/src/bin/page_loss.rs:421"
+reason = "banc : motif regex littéral du binaire de mesure ; une erreur serait un bug du motif, vue au premier lancement"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "85ab9f52b17b9266"
+rule = "aislop:ai-slop/todo-stub"
+file = "crates/tk-formats/src/latex.rs:6"
+reason = "doc du module : « TODO » y est une donnée que le compacteur LaTeX garde, pas une tâche en suspens"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "dd24dfb3fb0ad91e"
+rule = "aislop:ai-slop/todo-stub"
+file = "crates/tokenade-core/src/query_parser.rs:39"
+reason = "doc : `TODO:fix` est l'exemple d'entrée que le parseur de requêtes laisse en texte"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "b1970e5a6e28e549"
+rule = "aislop:ai-slop/todo-stub"
+file = "crates/tokenade-core/src/query_parser.rs:58"
+reason = "doc : `TODO:fix` est l'exemple d'entrée que le parseur de requêtes laisse en texte"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "deb3c780f35f2078"
+rule = "aislop:ai-slop/todo-stub"
+file = "crates/tokenade-core/src/query_parser.rs:174"
+reason = "commentaire de test : `TODO:fix` est l'entrée testée, pas une tâche"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "867897745b0758a9"
+rule = "aislop:ai-slop/rust-todo-stub"
+file = "crates/tokenade-cli/src/hooks/replay.rs:364"
+reason = "source factice écrite par un test (replay.rs, module de tests) : le todo!() est la donnée"
+by = "agent"
+date = "2026-11-26"
+
+[[false_positive]]
+id = "6881cd7e34a93e92"
+rule = "aislop:ai-slop/generic-naming"
+file = "crates/tokenade-cli/src/install/gemini_hooks/register.rs:194"
+reason = "`root` est la racine du document JSON des réglages Gemini : le nom dit ce que c'est"
+by = "agent"
+date = "2026-11-26"

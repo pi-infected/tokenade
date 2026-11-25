@@ -1192,10 +1192,14 @@ mod hermetic_env_tests {
         };
         // Set in THIS process: the child must see none of them.
         for var in tokenade_core::stores::COMPACTION_ENV {
+            // SAFETY: test-only environment mutation. CI runs the suite under nextest, one
+            // process per test, so no other thread reads the environment while it changes.
             unsafe { std::env::set_var(var, "0.35") };
         }
         let run = b.run_with_stdin(&["filter", "cat"], Some("printenv-probe\n"));
         for var in tokenade_core::stores::COMPACTION_ENV {
+            // SAFETY: test-only environment mutation. CI runs the suite under nextest, one
+            // process per test, so no other thread reads the environment while it changes.
             unsafe { std::env::remove_var(var) };
         }
         assert!(run.is_ok(), "the bench must be able to launch a measurement");

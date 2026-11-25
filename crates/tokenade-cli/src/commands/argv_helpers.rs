@@ -137,7 +137,6 @@ pub(crate) fn subcommand_touches_content(sub: Option<&str>) -> bool {
                 | "mcp-proxy"
                 | "mcp_proxy"
                 | "mcp"
-                | "agent"
                 | "subagent-brief"
                 | "subagent_brief"
                 | "session-tick"

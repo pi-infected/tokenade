@@ -280,7 +280,7 @@ fn delivered(r: &Row, threshold: usize) -> Option<usize> {
     if r.md_tokens < threshold {
         return None; // passthrough — the native answer is what the agent gets
     }
-    r.scoped_tokens.map(|t| t).map(|t| t.min(INLINE_CAP))
+    r.scoped_tokens.map(|t| t.min(INLINE_CAP))
 }
 
 #[test]

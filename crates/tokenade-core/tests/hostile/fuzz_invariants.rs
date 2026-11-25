@@ -932,7 +932,6 @@ fn fuzz_router_invariants() {
         } else {
             doc
         };
-        let doc = doc; // rebind for the closure below
         let result2 = std::panic::catch_unwind(|| auto::compact(&doc));
         let (kind, body, _sav) = match result2 {
             Ok(r) => r,

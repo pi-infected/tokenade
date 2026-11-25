@@ -24,7 +24,6 @@ pub fn render(d: &DashboardData, theme: &Theme) -> String {
     // NOT touch (bypass) afterwards" — putting bypass last makes the
     // savings story end on the missed-opportunity surface.
     render_code_intel(&mut s, d, theme, &p);
-    render_light_agent(&mut s, d, theme, &p);
     render_claude_usage(&mut s, d, theme, &p);
     render_outside_tokenade_functions(&mut s, d, theme, &p);
     render_cache_and_index(&mut s, d, theme, &p);

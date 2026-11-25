@@ -8,7 +8,6 @@ description = "Tokenade — the FORMATS layer: recognise a format and make it sh
 [dependencies]
 tk-base = { path = "../tk-base" }
 tk-fold = { path = "../tk-fold" }
-serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
 base64 = { workspace = true }

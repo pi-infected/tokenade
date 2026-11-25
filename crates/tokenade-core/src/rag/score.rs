@@ -197,51 +197,6 @@ fn insert_in_document_order(out: &mut String, markdown: &str, fresh: &[&str]) {
     };
 }
 
-#[cfg(test)]
-mod fusion_goes_in_its_place {
-    /// The definition that opens a section comes BEFORE the paragraph the
-    /// structural pick chose from further down the same section.
-    #[test]
-    fn a_fusion_block_precedes_the_passage_that_follows_it_in_the_document() {
-        let md = "### 2.7: DRM\nDRM is an acronym for Digital Rights Management.\nIntro line two.\n\nDRM enables various rights.\n";
-        let mut out = "> Tasks > 2.7: DRM\nDRM enables various rights.\n".to_string();
-        super::insert_in_document_order(
-            &mut out,
-            md,
-            &[
-                "### 2.7: DRM",
-                "DRM is an acronym for Digital Rights Management.",
-            ],
-        );
-        assert_eq!(
-            out,
-            "### 2.7: DRM\nDRM is an acronym for Digital Rights Management.\n…\n\n> Tasks > 2.7: DRM\nDRM enables various rights.\n"
-        );
-    }
-
-    /// A fusion block from ANOTHER section (a table of contents up front) does
-    /// not jump ahead of the passage that answers.
-    #[test]
-    fn a_block_from_another_section_stays_at_the_end() {
-        let md = "## Contents\n2.3 Basics\n2.4 Auto conversion\n## Introduction\nWelcome.\n### 2.4: Auto conversion\nSelect the book.\n";
-        let mut out = "> 2.4: Auto conversion\nSelect the book.\n".to_string();
-        super::insert_in_document_order(&mut out, md, &["2.3 Basics", "2.4 Auto conversion"]);
-        assert_eq!(
-            out,
-            "> 2.4: Auto conversion\nSelect the book.\n\n…\n\n2.3 Basics\n2.4 Auto conversion\n"
-        );
-    }
-
-    /// A fusion block from AFTER every run still goes last.
-    #[test]
-    fn a_block_that_comes_after_stays_at_the_end() {
-        let md = "A first.\nB second.\nC third.\n";
-        let mut out = "A first.\n".to_string();
-        super::insert_in_document_order(&mut out, md, &["B second.", "C third."]);
-        assert_eq!(out, "A first.\n\n…\n\nB second.\nC third.\n");
-    }
-}
-
 /// Structural + dense-RAG scoped extract. See the module docs.
 ///
 /// Returns `None` (whole-page fallback, same contract as the baseline) when
@@ -431,4 +386,49 @@ pub(super) fn blocks_query_terms<'a>(
                 .collect()
         })
         .collect()
+}
+
+#[cfg(test)]
+mod fusion_goes_in_its_place {
+    /// The definition that opens a section comes BEFORE the paragraph the
+    /// structural pick chose from further down the same section.
+    #[test]
+    fn a_fusion_block_precedes_the_passage_that_follows_it_in_the_document() {
+        let md = "### 2.7: DRM\nDRM is an acronym for Digital Rights Management.\nIntro line two.\n\nDRM enables various rights.\n";
+        let mut out = "> Tasks > 2.7: DRM\nDRM enables various rights.\n".to_string();
+        super::insert_in_document_order(
+            &mut out,
+            md,
+            &[
+                "### 2.7: DRM",
+                "DRM is an acronym for Digital Rights Management.",
+            ],
+        );
+        assert_eq!(
+            out,
+            "### 2.7: DRM\nDRM is an acronym for Digital Rights Management.\n…\n\n> Tasks > 2.7: DRM\nDRM enables various rights.\n"
+        );
+    }
+
+    /// A fusion block from ANOTHER section (a table of contents up front) does
+    /// not jump ahead of the passage that answers.
+    #[test]
+    fn a_block_from_another_section_stays_at_the_end() {
+        let md = "## Contents\n2.3 Basics\n2.4 Auto conversion\n## Introduction\nWelcome.\n### 2.4: Auto conversion\nSelect the book.\n";
+        let mut out = "> 2.4: Auto conversion\nSelect the book.\n".to_string();
+        super::insert_in_document_order(&mut out, md, &["2.3 Basics", "2.4 Auto conversion"]);
+        assert_eq!(
+            out,
+            "> 2.4: Auto conversion\nSelect the book.\n\n…\n\n2.3 Basics\n2.4 Auto conversion\n"
+        );
+    }
+
+    /// A fusion block from AFTER every run still goes last.
+    #[test]
+    fn a_block_that_comes_after_stays_at_the_end() {
+        let md = "A first.\nB second.\nC third.\n";
+        let mut out = "A first.\n".to_string();
+        super::insert_in_document_order(&mut out, md, &["B second.", "C third."]);
+        assert_eq!(out, "A first.\n\n…\n\nB second.\nC third.\n");
+    }
 }

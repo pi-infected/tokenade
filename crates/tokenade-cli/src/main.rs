@@ -77,11 +77,6 @@ mod feature_cli;
 use crate::feature_cli::*;
 mod bench_cli;
 use crate::bench_cli::cmd_bench;
-// Sub-agent feature: shelved (benched net-negative) — kept behind `light-agent`.
-#[cfg(feature = "light-agent")]
-mod agent;
-#[cfg(feature = "light-agent")]
-use crate::agent::cmd_agent;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -130,7 +125,7 @@ fn main() {
         let sub = std::env::args().nth(1).unwrap_or_default();
         let handles_own_pipes = matches!(
             sub.as_str(),
-            "mcp-wrap" | "mcp_wrap" | "mcp-proxy" | "mcp" | "exec" | "agent" | "wrap" | "wrap-mcp"
+            "mcp-wrap" | "mcp_wrap" | "mcp-proxy" | "mcp" | "exec" | "wrap" | "wrap-mcp"
         );
         if !handles_own_pipes {
             tokenade_core::crash_guard::restore_sigpipe_default();
@@ -297,12 +292,6 @@ fn run(args: &[String]) -> i32 {
     // no tokenade hooks, warn LOUDLY (throttled to once per day).
     warn_if_hooks_vanished(cmd);
 
-    // Startup housekeeping: prune light-agent audit traces older than 7 days
-    // (throttled to one scan per 12h). Does not affect token accounting — gains
-    // live in the ledger, written when a run finishes, not in these trace dirs.
-    #[cfg(feature = "light-agent")]
-    crate::agent::gc_traces();
-
     // L85 — universal --help/-h interception. Without this, typing
     // `tokenade <cmd> --help` runs `<cmd>` with --help treated as
     // an unknown arg (silently ignored) — destructive for commands
@@ -400,12 +389,6 @@ fn run(args: &[String]) -> i32 {
         // reached via `read` (and the `wrap` command path for live commands).
         "read" => cmd_auto(rest),
         "ask" | "semantic" | "sem" => semantic_cli::cmd_semantic(rest),
-        #[cfg(feature = "light-agent")]
-        "agent" => cmd_agent(rest),
-        #[cfg(feature = "light-agent")]
-        "local-serve" => crate::agent::cmd_local_serve(rest),
-        #[cfg(feature = "light-agent")]
-        "scout" => crate::agent::cmd_scout(rest),
         "subagent-brief" | "subagent_brief" => hooks::cmd_subagent_brief(rest),
         "session-tick" => hooks::cmd_session_tick(rest),
         "fold-payload" | "fold_payload" => llm_proxy::cli::cmd_fold_payload(rest),
@@ -633,8 +616,7 @@ fn run(args: &[String]) -> i32 {
 /// Every command keys its index on `root()`, and `root()` must answer the
 /// PROJECT root — not the directory the command happened to run in. Asserted
 /// on the source because the alternative is mutating the process cwd, which is
-/// global and would race every other test in the binary.
-
+/// global and would race every other test in the binary.///
 /// Format names an agent naturally types as if they were commands. Shared by
 /// BOTH unknown-command sites: the dispatcher, and the `--help` path. They had
 /// drifted — `tokenade csv` explained that csv is a format, while

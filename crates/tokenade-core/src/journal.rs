@@ -326,12 +326,8 @@ fn alike_threads_once(lines: Vec<String>) -> Vec<String> {
         if in_block && l.starts_with('#') {
             if n_threads == 1 {
                 out.push(l);
-            } else if l.starts_with("#0 ") {
-                let top = l["#0 ".len()..]
-                    .split(" + ")
-                    .next()
-                    .unwrap_or(&l)
-                    .to_string();
+            } else if let Some(rest) = l.strip_prefix("#0 ") {
+                let top = rest.split(" + ").next().unwrap_or(&l).to_string();
                 match others.iter_mut().find(|(t, _)| *t == top) {
                     Some((_, k)) => *k += 1,
                     None => others.push((top, 1)),

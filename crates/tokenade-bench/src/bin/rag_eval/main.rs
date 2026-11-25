@@ -323,7 +323,7 @@ fn main() {
                 .collect();
             let found = rels.iter().filter(|r| **r > 0.0).count();
             recall += found as f64 / c.gold.len() as f64;
-            let ideal: Vec<f64> = std::iter::repeat(1.0).take(c.gold.len().min(k)).collect();
+            let ideal: Vec<f64> = std::iter::repeat_n(1.0, c.gold.len().min(k)).collect();
             ndcg += if ideal.is_empty() {
                 0.0
             } else {

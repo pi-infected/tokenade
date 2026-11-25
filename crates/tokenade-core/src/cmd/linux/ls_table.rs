@@ -142,7 +142,7 @@ pub fn fold(text: &str, label: &str) -> Option<String> {
     // threshold, and the downstream cut kept thirty rows: 260 names gone,
     // the very thing an `ls` is read for. Past the first rows, each entry is
     // its name alone (`dir/` for a directory), on one line per run.
-    Some(render(text, label, FULL_ROWS_WHEN_CUT)?)
+    render(text, label, FULL_ROWS_WHEN_CUT)
 }
 
 /// Rows kept whole before the rest of an oversized listing goes to names.

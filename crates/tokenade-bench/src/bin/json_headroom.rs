@@ -202,7 +202,7 @@ fn main() {
 
     // Sorted by what remains DELIVERED, not by rate: a file that returns −13 % on
     // 300 KB weighs more than ten that return −40 % on 2 KB.
-    rows.sort_by(|a, b| b.after.cmp(&a.after));
+    rows.sort_by_key(|b| std::cmp::Reverse(b.after));
     println!("the heaviest AFTER folding:");
     for r in rows.iter().take(limit) {
         let pct = 100.0 * (r.before.saturating_sub(r.after)) as f64 / r.before.max(1) as f64;
@@ -225,7 +225,7 @@ fn main() {
         e.2 += r.after;
     }
     let mut named: Vec<_> = by_name.into_iter().collect();
-    named.sort_by(|a, b| b.1 .2.cmp(&a.1 .2));
+    named.sort_by_key(|b| std::cmp::Reverse(b.1 .2));
     println!("\nby file NAME, what remains delivered:");
     for (name, (n, before, after)) in named.iter().take(limit) {
         println!(

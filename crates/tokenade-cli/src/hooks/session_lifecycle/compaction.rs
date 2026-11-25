@@ -332,7 +332,7 @@ pub(crate) fn refs_worth_offering_in(
         }
         entries.push((mtime, hash, md.len()));
     }
-    entries.sort_by(|a, b| b.2.cmp(&a.2));
+    entries.sort_by_key(|b| std::cmp::Reverse(b.2));
     entries.truncate(AT_MOST);
     entries
 }
@@ -478,7 +478,7 @@ pub(crate) fn compact_session_transcripts(
 /// Delta-based: the sentinel stores the total already credited, so a session
 /// trimmed and resumed many times books each new saving exactly once.
 pub(crate) fn book_resume_credit(
-    h: &std::path::PathBuf,
+    h: &std::path::Path,
     parsed: &serde_json::Value,
     transcript_path: &str,
 ) {

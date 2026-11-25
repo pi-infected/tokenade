@@ -698,7 +698,11 @@ fn the_command_stash_banner_does_not_point_at_a_refused_rerun() {
     let big = "line of ordinary output\n".repeat(4000);
     let out = tokenade_core::disclose::maybe_stash(big, SourceHint::Shell);
     match prev {
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         Some(p) => unsafe { std::env::set_var("TOKENADE_STASH_DIR", p) },
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         None => unsafe { std::env::remove_var("TOKENADE_STASH_DIR") },
     }
     let _ = std::fs::remove_dir_all(&dir);

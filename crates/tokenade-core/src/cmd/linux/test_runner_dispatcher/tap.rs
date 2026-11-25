@@ -31,10 +31,9 @@ fn test_line(line: &str) -> Option<bool> {
     let t = line.trim_start();
     let (passed, rest) = if let Some(r) = t.strip_prefix("not ok ") {
         (false, r)
-    } else if let Some(r) = t.strip_prefix("ok ") {
-        (true, r)
     } else {
-        return None;
+        let r = t.strip_prefix("ok ")?;
+        (true, r)
     };
     rest.starts_with(|c: char| c.is_ascii_digit()).then_some(passed)
 }

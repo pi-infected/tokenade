@@ -58,18 +58,6 @@ const NOT_OUR_OWN_PLUMBING: &[(&str, &str)] = &[
         "our own executable — the index rebuild handed to a child",
     ),
     (
-        "crates/tokenade-cli/src/agent/local.rs",
-        "our own executable, as a delegated agent worker",
-    ),
-    (
-        "crates/tokenade-cli/src/agent/mod.rs",
-        "our own executable, as a delegated agent worker",
-    ),
-    (
-        "crates/tokenade-cli/src/agent/tools.rs",
-        "our own executable, to fold a tool result the worker produced",
-    ),
-    (
         "crates/tokenade-cli/src/dashboard_cli/statusline.rs",
         "our own executable, and the status-line command the USER configured",
     ),

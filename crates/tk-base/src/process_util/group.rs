@@ -288,6 +288,8 @@ pub fn guard_group_against_our_death(pgid: u32) -> Option<GroupReaper> {
     // handle whose closure IS the death signal, so it must outlive this scope.
     unsafe { libc::close(read_fd) };
     Some(GroupReaper {
+        // SAFETY: `write_fd` came from pipe(2) above and nothing else owns it, so `OwnedFd` may
+        // take it.
         write_end: Some(unsafe { OwnedFd::from_raw_fd(write_fd) }),
     })
 }
@@ -337,6 +339,7 @@ mod term_forward {
         if EXIT_AFTER_RELAY.load(Ordering::SeqCst) {
             // Restore the default disposition and re-raise: both are
             // async-signal-safe, and the process dies with the right status.
+            // SAFETY: signal(2) and raise(3) are both async-signal-safe.
             unsafe {
                 libc::signal(sig, libc::SIG_DFL);
                 libc::raise(sig);

@@ -464,7 +464,7 @@ pub(super) fn dispatch_by_command(
         // why it is an arm and not a `WRAPPER_PROGS` entry (that list would
         // label `corepack enable` as a program called `enable`). Fleet
         // 2026-10-02: `corepack.js` 37 events reported uncovered.
-        ("corepack", pm) if matches!(pm, "pnpm" | "pnpx" | "yarn" | "yarnpkg" | "npm" | "npx") => {
+        ("corepack", "pnpm" | "pnpx" | "yarn" | "yarnpkg" | "npm" | "npx") => {
             return Err(filter_wrapped(argv, output, before));
         }
         // Wrappers — look at the WRAPPED command's first word. `sudo

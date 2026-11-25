@@ -189,7 +189,9 @@ pub fn strip_block_language(
         if t.starts_with(line_marker) {
             // Same question as the line-marker pass above, asked here so sql,
             // hcl and proto get it from one edit rather than three.
-            if comment_is_a_directive(&t[line_marker.len()..]) {
+            if t.strip_prefix(line_marker)
+                .is_some_and(comment_is_a_directive)
+            {
                 blank_run = 0;
                 out.push_str(trimmed);
                 out.push('\n');

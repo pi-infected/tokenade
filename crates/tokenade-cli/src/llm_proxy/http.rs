@@ -1,8 +1,7 @@
 //! The HTTP/1.1 this proxy actually needs, hand-rolled, and nothing more.
 //!
 //! Why not a framework: the tree already carries exactly one HTTP client
-//! (`reqwest`, workspace comment in `Cargo.toml`) and exactly one hand-rolled
-//! server (`agent/local.rs`). Adding an inbound framework would add an async
+//! (`reqwest`, workspace comment in `Cargo.toml`) and no other server. Adding an inbound framework would add an async
 //! runtime to a synchronous binary for a listener that serves one agent on
 //! loopback. The parsing below is the part that has to be right, so it is a
 //! pure transformation over a `BufRead` and is tested against byte strings

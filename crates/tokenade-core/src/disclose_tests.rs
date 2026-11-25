@@ -1561,29 +1561,39 @@ mod tests {
         // Hermetic: a TOKENADE_PRESSURE inherited from the invoking shell
         // scales the default and breaks the assertion (caught by a release
         // dry-run where the wrapper exported PRESSURE=0.75).
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_PRESSURE");
         }
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_READ_DISCLOSE_THRESHOLD");
         }
         assert_eq!(read_threshold_tokens(), READ_DEFAULT_THRESHOLD_TOKENS);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_READ_DISCLOSE_THRESHOLD", "1234");
         }
         assert_eq!(read_threshold_tokens(), 1234);
         // Garbage falls back to the default — same forgiving semantics
         // as threshold_tokens.
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_READ_DISCLOSE_THRESHOLD", "not-a-number");
         }
         assert_eq!(read_threshold_tokens(), READ_DEFAULT_THRESHOLD_TOKENS);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_READ_DISCLOSE_THRESHOLD");
         }
         // A deliberate Read must clear a HIGHER bar than an incidental
         // tool output before we stash it (the doc-digest fix).
-        assert!(READ_DEFAULT_THRESHOLD_TOKENS > DEFAULT_THRESHOLD_TOKENS);
+        const { assert!(READ_DEFAULT_THRESHOLD_TOKENS > DEFAULT_THRESHOLD_TOKENS) };
     }
 
     #[test]

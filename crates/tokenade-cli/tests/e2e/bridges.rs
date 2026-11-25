@@ -1007,8 +1007,6 @@ fn every_process_launcher_either_guards_its_work_or_says_why_not() {
     /// subject is the module, not the crate the refactoring put it in.
     const EXEMPT: &[(&str, &str)] = &[
         // Deliberately outlives us — killing these with the parent is the bug.
-        ("agent/local.rs", "spawns the local-serve DAEMON"),
-        ("agent/mod.rs", "detached agent run, by design"),
         ("updater.rs", "detached updater; dies with us = no update"),
         ("lifecycle/browser.rs", "opens the USER's browser"),
         // Bounded internal calls: fixed program, fixed args, no user work.
@@ -1048,7 +1046,6 @@ fn every_process_launcher_either_guards_its_work_or_says_why_not() {
         ),
         // The agent's own tools: `run` is gated to the TOKENADE_EXPLORE
         // allowlist, and its BASH tool goes through the sandbox, which guards.
-        ("agent/tools.rs", "allowlist + sandbox for BASH"),
         // Not shipped.
         ("bench_cli.rs", "bench harness"),
         ("bin/accuracy.rs", "bench harness"),

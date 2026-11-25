@@ -508,7 +508,7 @@ mod tests {
     /// a slide-number field (`*`), and a hidden second slide.
     fn make_ppt() -> Vec<u8> {
         let mut s = Vec::new();
-        let mut at = |s: &mut Vec<u8>, r: Vec<u8>| {
+        let at = |s: &mut Vec<u8>, r: Vec<u8>| {
             let o = s.len() as u32;
             s.extend(r);
             o

@@ -80,10 +80,10 @@ fn what_a_json_payload_still_costs() {
     );
     // The files that cost the most AFTER compaction are where any further work
     // has to pay off; ranking by percentage would surface tiny files.
-    worst.sort_by(|a, b| b.3.cmp(&a.3));
+    worst.sort_by_key(|b| std::cmp::Reverse(b.3));
     println!("--- files where compaction does nothing (<5%), largest first ---");
     let mut inert: Vec<&(f64, usize, String, usize)> = worst.iter().filter(|w| w.0 < 5.0).collect();
-    inert.sort_by(|a, b| b.3.cmp(&a.3));
+    inert.sort_by_key(|b| std::cmp::Reverse(b.3));
     let inert_tokens: usize = inert.iter().map(|w| w.3).sum();
     println!(
         "  {} files, {inert_tokens} tokens ({:.1}% of the corpus)",

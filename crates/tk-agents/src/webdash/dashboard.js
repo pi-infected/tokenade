@@ -647,9 +647,13 @@ const TABS = [
 let tab = localStorage.getItem("tokenade-tab") || "ops";
 if (!TABS.some((x) => x.id === tab)) tab = "ops";
 
+// Only a path INSIDE the home folder shortens: "/home/al2/x" is not under
+// "/home/al", so the prefix must end on a separator (either one, Windows too).
 function shortProject(p){
-  if (D.home && p.startsWith(D.home)) return "~" + p.slice(D.home.length);
-  return p;
+  const h = D.home;
+  if (!h || !p.startsWith(h)) return p;
+  const rest = p.slice(h.length);
+  return rest === "" || rest[0] === "/" || rest[0] === "\\" ? "~" + rest : p;
 }
 function savingsRows(map){
   return Object.entries(map)

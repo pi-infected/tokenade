@@ -77,7 +77,7 @@ const OVERSIZED: &[(&str, usize)] = &[
     // `scan.rs`; routing gained Dart and worktrunk; `detectors.rs` and
     // `auto_cmd.rs` crossed 800 in small touches. To be split first in the
     // next cycle.
-    ("tokenade-core/src/gain/record.rs", 871),
+    ("tokenade-core/src/gain/record.rs", 831),
     ("tokenade-core/src/gain/scan.rs", 846),
     ("tokenade-core/src/filter/dispatch.rs", 829),
     ("tokenade-core/src/auto/detectors.rs", 823),
@@ -101,8 +101,7 @@ fn crates_root() -> PathBuf {
 /// crates were extracted on 2026-09-13 — `tk-base` in the morning, `tk-fold`
 /// in the afternoon — and a list of names would have missed the second
 /// silently: a ratchet that does not walk a root does not complain about it,
-/// it merely stays green. `tokenade-llama-sys` is not a workspace member and
-/// has no `src/` here.
+/// it merely stays green.
 fn production_files() -> Vec<(String, usize)> {
     let mut out = Vec::new();
     let mut krates: Vec<String> = std::fs::read_dir(crates_root())

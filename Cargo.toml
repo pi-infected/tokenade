@@ -9,15 +9,8 @@ members = [
     "crates/tokenade-cli",
     "crates/tokenade-bench",
 ]
-# tokenade-llama-sys is EXCLUDED from the workspace on purpose: its build.rs
-# compiles llama.cpp via cmake (very slow, needs a C/C++ toolchain), and the
-# local-llm sub-agent feature it backs is SHELVED. It stays an OPTIONAL path
-# dep of tokenade-cli, pulled ONLY by `--features local-llm` — a path dep does
-# not need to be a workspace member. Excluding it means `cargo build/test
-# --workspace` and the release build NEVER invoke cmake/llama.cpp; the feature
-# still resolves & compiles on demand with `-p tokenade-cli --features local-llm`.
 # Cloned competitor & benchmark corpora are inputs, not part of our workspace.
-exclude = ["crates/tokenade-llama-sys", "competitors", "benchmarks/repos", "experiments"]
+exclude = ["competitors", "benchmarks/repos", "experiments"]
 
 [workspace.package]
 version = "2.0.10"

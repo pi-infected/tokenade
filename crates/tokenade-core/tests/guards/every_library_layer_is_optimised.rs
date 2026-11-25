@@ -27,10 +27,6 @@ const NOT_A_LAYER: &[(&str, &str)] = &[
         "tokenade-bench",
         "the measurement harness must not be faster than what it measures",
     ),
-    (
-        "tokenade-llama-sys",
-        "outside the workspace: its profile is that of its own build",
-    ),
 ];
 
 fn workspace_manifest() -> String {

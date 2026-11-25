@@ -92,12 +92,6 @@ pub(super) fn cmd_forwards_help(cmd: &str) -> bool {
 pub(super) const KNOWN_COMMANDS: &[&str] = &[
     "read",
     "exec-compact",
-    #[cfg(feature = "light-agent")]
-    "agent",
-    #[cfg(feature = "light-agent")]
-    "local-serve",
-    #[cfg(feature = "light-agent")]
-    "scout",
     "self-update",
     "selfupdate",
     "upgrade",

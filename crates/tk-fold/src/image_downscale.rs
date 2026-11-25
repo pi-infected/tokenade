@@ -821,12 +821,12 @@ mod tests {
         assert_eq!(vision_token_estimate(800, 600), (800 * 600) / 750);
         // The cap applied here is the PLATFORM's, never our own (lower)
         // target — an image between the two is billed at its own size.
-        assert!(PLATFORM_MAX_EDGE > DEFAULT_MAX_EDGE);
+        const { assert!(PLATFORM_MAX_EDGE > DEFAULT_MAX_EDGE) };
         assert_eq!(vision_token_estimate(1200, 900), (1200 * 900) / 750);
         // BOTH platform limits bind, not just the edge: 1500×1400 is under
         // the 1568 edge and over the 1.15 MP area, and the witness above
         // cannot tell the two apart because its edge binds first.
-        assert!(1500 < PLATFORM_MAX_EDGE && 1500 * 1400 > PLATFORM_MAX_PIXELS);
+        const { assert!(1500 < PLATFORM_MAX_EDGE && 1500 * 1400 > PLATFORM_MAX_PIXELS) };
         assert!(
             vision_token_estimate(1500, 1400) * 3 / 2 < (1500 * 1400) / 750,
             "the megapixel half of the platform cap is not applied"

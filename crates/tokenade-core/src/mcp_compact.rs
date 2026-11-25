@@ -99,11 +99,7 @@ fn screenshot_tool_name(tool: &str) -> bool {
 /// Body-only capture fingerprint. Do not widen without a captured
 /// transcript witness — every extra substring is a false-positive risk.
 pub fn text_looks_like_screenshot_capture(text: &str) -> bool {
-    let head = if text.len() > 4096 {
-        &text[..4096]
-    } else {
-        text
-    };
+    let head = crate::caps::truncate_at_char_boundary(text, 4096);
     let s = head.to_ascii_lowercase();
     s.contains("successfully captured screenshot")
         || s.contains("successfully captured zoomed screenshot")
@@ -507,6 +503,14 @@ pub mod browser_page {
 mod tests {
     use super::*;
 
+    /// The fingerprint reads a 4096-byte head of text the MCP server chose:
+    /// a multi-byte character across that offset used to panic the hook.
+    #[test]
+    fn a_character_across_the_head_limit_does_not_panic() {
+        let text = format!("{}é successfully captured screenshot", "a".repeat(4095));
+        assert!(!text_looks_like_screenshot_capture(&text));
+    }
+
     #[test]
     fn fs_directory_tree_renders_indented_tree_lossless() {
         // Real shape captured from @modelcontextprotocol/server-filesystem.
@@ -878,9 +882,8 @@ mod tests {
         );
         assert_eq!(body_fp, 0, "body fingerprint fired off a capture notice");
         // Every capture the fold would rewrite is caught.
-        assert_eq!(
+        assert!(
             capture_would_change > 0,
-            true,
             "corpus has no capture that auto::compact rewrites — gate would be a no-op"
         );
     }

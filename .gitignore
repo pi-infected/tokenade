@@ -55,3 +55,6 @@ testdata/compat/results/*.partial.json
 __pycache__/
 crates/tokenade-cli/assets/hermes_plugin/hook-fired
 crates/tokenade-cli/assets/hermes_plugin/hook-registered
+
+# qcheck: local verdict journal (the global one under ~/.cache/qcheck keeps the same rows)
+.qcheck/

@@ -112,7 +112,7 @@ fn compact_mbox(text: &str) -> String {
 }
 
 fn compact_message(text: &str) -> String {
-    let (headers, body) = split_headers(&text);
+    let (headers, body) = split_headers(text);
     let mut out = String::new();
     for want in KEPT_HEADERS {
         for (name, value) in headers.iter().filter(|(n, _)| n.eq_ignore_ascii_case(want)) {
@@ -157,7 +157,7 @@ fn compact_message(text: &str) -> String {
                 None => names.push((n.to_string(), 1)),
             }
         }
-        names.sort_by(|a, b| b.1.cmp(&a.1));
+        names.sort_by_key(|b| std::cmp::Reverse(b.1));
         let shown: Vec<String> = names
             .iter()
             .take(4)

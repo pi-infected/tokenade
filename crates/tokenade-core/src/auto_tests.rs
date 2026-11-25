@@ -2240,7 +2240,7 @@ mod wide_corpus_sweep {
                 }
             }
         }
-        rows.sort_by(|a, b| b.0.cmp(&a.0));
+        rows.sort_by_key(|b| std::cmp::Reverse(b.0));
         eprintln!("SWEEP scanned={scanned} unchanged={}", rows.len());
         for (bytes, ratio, kind, name) in rows.iter().take(30) {
             eprintln!("BIG  {bytes:>9}  {ratio:.3}  {kind:<14} {name}");
@@ -2253,7 +2253,7 @@ mod wide_corpus_sweep {
             e.1 += bytes;
         }
         let mut v: Vec<_> = by_kind.into_iter().collect();
-        v.sort_by(|a, b| b.1 .1.cmp(&a.1 .1));
+        v.sort_by_key(|b| std::cmp::Reverse(b.1 .1));
         for (k, (n, b)) in v.into_iter().take(15) {
             eprintln!("KIND {k:<16} n={n:<4} bytes={b}");
         }
@@ -2427,7 +2427,7 @@ mod source_claimants {
                 eprintln!("{n:6} {pin:9} {pk:9}  .{ext} -> {k}");
             }
         }
-        worst.sort_by(|a, b| b.0.cmp(&a.0));
+        worst.sort_by_key(|b| std::cmp::Reverse(b.0));
         eprintln!("--- source files losing over half their payload ---");
         for (lost, ext, k, path) in worst
             .iter()

@@ -36,7 +36,7 @@ pub(crate) fn mastodon_status(body: &str) -> Option<String> {
         meta.push(format!("{n} boosts"));
     }
     if let Some(d) = s.get("created_at").and_then(|d| d.as_str()) {
-        meta.push(d[..d.len().min(10)].to_string());
+        meta.push(crate::caps::truncate_at_char_boundary(d, 10).to_string());
     }
     if !meta.is_empty() {
         out.push_str(&format!("> {} — mastodon\n", meta.join(" • ")));
@@ -98,7 +98,7 @@ pub(crate) fn bluesky_thread(body: &str) -> Option<String> {
         meta.push(format!("{n} replies"));
     }
     if let Some(d) = p.pointer("/record/createdAt").and_then(|d| d.as_str()) {
-        meta.push(d[..d.len().min(10)].to_string());
+        meta.push(crate::caps::truncate_at_char_boundary(d, 10).to_string());
     }
     if !meta.is_empty() {
         out.push_str(&format!("> {} — bsky.app\n", meta.join(" • ")));
@@ -216,7 +216,7 @@ pub(crate) fn x_post(body: &str) -> Option<String> {
         meta.push(format!("{n} replies"));
     }
     if let Some(d) = v.get("created_at").and_then(|d| d.as_str()) {
-        meta.push(d[..d.len().min(10)].to_string());
+        meta.push(crate::caps::truncate_at_char_boundary(d, 10).to_string());
     }
     if !meta.is_empty() {
         out.push_str(&format!("> {} — x.com\n", meta.join(" • ")));

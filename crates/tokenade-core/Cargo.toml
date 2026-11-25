@@ -65,10 +65,7 @@ pdf-extract = { workspace = true }
 lopdf = { workspace = true }
 pdf_oxide = { workspace = true }
 encoding_rs = { workspace = true }
-chardetng = { workspace = true }
 rusqlite = { workspace = true }
-sqlite-vec = { workspace = true }
-zerocopy = { workspace = true }
 tree-sitter = { workspace = true }
 tree-sitter-rust = { workspace = true }
 tree-sitter-python = { workspace = true }
@@ -99,9 +96,6 @@ tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 scraper = "0.27"
 ego-tree = "0.11"
 model2vec-rs = { version = "0.2", default-features = false, features = ["local-only", "fancy-regex"] }
-# Sparse BM25 retrieval. Hybridised with the dense embedder via RRF in
-# `semantic_search` and `file_search`.
-bm25 = "2"
 infer = { version = "0.16", default-features = false }
 toml = { workspace = true }
 
@@ -110,28 +104,12 @@ ed25519-dalek = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 base64 = { workspace = true }
-image = { workspace = true }
 calamine = { workspace = true }
 cfb = { workspace = true }
 reqwest = { workspace = true }
 wreq = { version = "=0.15.3", optional = true, features = ["cookies", "gzip", "brotli", "deflate", "zstd"] }
 wreq-util = { version = "=0.1.0", optional = true, features = ["emulation"] }
-tokio = { workspace = true }
 
-# Unix-only: fatal-signal crash guard (see crash_guard.rs). Stops a native
-# crash in a bundled C extension (sqlite-vec / tree-sitter) or the embedding
-# runtime from dumping core on every hook invocation (the Fedora PC-slowdown
-# report). No-op / not linked on Windows.
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-# Only for the liveness question in `process_util`: Windows has no `kill(pid, 0)`,
-# and without a real answer the scratch sweep reclaims nothing there.
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = [
-    "Win32_Foundation",
-    "Win32_System_Threading",
-] }
 
 [dev-dependencies]
 insta = { workspace = true }

@@ -141,14 +141,11 @@ pub const AGENT_ENV: &str = "TOKENADE_MCP_AGENT";
 
 pub(super) fn put_agent_env(obj: &mut serde_json::Map<String, Value>, agent: Option<&str>) {
     let Some(agent) = agent else { return };
-    match obj
+    if let Value::Object(env) = obj
         .entry("env")
         .or_insert_with(|| Value::Object(Default::default()))
     {
-        Value::Object(env) => {
-            env.insert(AGENT_ENV.into(), Value::String(agent.into()));
-        }
-        _ => {}
+        env.insert(AGENT_ENV.into(), Value::String(agent.into()));
     }
 }
 

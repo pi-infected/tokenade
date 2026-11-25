@@ -158,7 +158,7 @@ pub fn returned_almost_whole(
         .collect();
     // Sorted on BYTES still delivered, not on the percentage: what we
     // would recover by fixing is bytes.
-    kept.sort_by(|x, y| y.2.cmp(&x.2));
+    kept.sort_by_key(|y| std::cmp::Reverse(y.2));
     kept
 }
 
@@ -443,7 +443,7 @@ fn main() {
             .header()
         );
         let mut worst = delivered_rows.clone();
-        worst.sort_by(|a, b| b.2.cmp(&a.2));
+        worst.sort_by_key(|b| std::cmp::Reverse(b.2));
         for (key, b, a) in worst.iter().take(limit) {
             println!("  {:>9} → {:>9}  {key}", thousands(*b), thousands(*a));
         }
@@ -459,7 +459,7 @@ fn main() {
     }
 
     let mut rows: Vec<(&String, &Group)> = groups.iter().collect();
-    rows.sort_by(|a, b| b.1.bytes.cmp(&a.1.bytes));
+    rows.sort_by_key(|b| std::cmp::Reverse(b.1.bytes));
     println!(
         "{seen} capture(s) · {} → {} bytes (−{} %)\n\
              \x20 {} distinct shape(s) in the residue\n\
@@ -581,7 +581,7 @@ fn print_shape_ranking(
     verbatim: bool,
 ) {
     let mut ranked: Vec<(&String, &Group)> = groups.iter().collect();
-    ranked.sort_by(|a, b| b.1.bytes.cmp(&a.1.bytes));
+    ranked.sort_by_key(|b| std::cmp::Reverse(b.1.bytes));
     // REPEATED shapes first: a shape seen only once is
     // content, not a template, and folding it would save nothing.
     let repeated: usize = ranked

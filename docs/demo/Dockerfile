@@ -8,7 +8,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends nodejs npm python3-pytest git less \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g @anthropic-ai/claude-code \
- && useradd -m -u $UID -s /bin/bash dev \
+ && useradd -l -m -u $UID -s /bin/bash dev \
  && chown -R dev /usr/local/lib/node_modules /usr/local/bin
 COPY --chown=dev project /demo
 COPY --chown=dev home/ /home/dev/

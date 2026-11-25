@@ -123,7 +123,7 @@ mod tests {
         s.push_str("ScheduledDefrag                          N/A                    Ready          \n\n");
         s.push_str("Folder: \\Empty\n");
         s.push_str(HEAD);
-        s.push_str("\n");
+        s.push('\n');
         s.push_str("Folder: \\Microsoft\\Windows\\Device Setup\n");
         s.push_str(HEAD);
         s.push_str("INFO: There are no scheduled tasks presently available at your access level.\n");

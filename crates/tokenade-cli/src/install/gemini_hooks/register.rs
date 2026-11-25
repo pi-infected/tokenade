@@ -191,20 +191,11 @@ pub(crate) fn install_qwen_statusline(settings: &mut serde_json::Value, exe: &st
 /// `true` when it changed something.
 pub(crate) fn install_after_tool_hook(settings: &mut serde_json::Value, after_cmd: &str) -> bool {
     let mut changed = false;
-    let hooks_obj2 = settings
-        .as_object_mut()
-        .unwrap()
-        .entry("hooks")
-        .or_insert(serde_json::json!({}));
-    let after_tool = hooks_obj2
-        .as_object_mut()
-        .unwrap()
-        .entry("AfterTool")
-        .or_insert(serde_json::json!([]));
-    if !after_tool.is_array() {
-        *after_tool = serde_json::json!([]);
-    }
-    let aarr = after_tool.as_array_mut().unwrap();
+    let Some(root) = settings.as_object_mut() else {
+        return false;
+    };
+    let hooks = crate::install::json_util::ensure_object_entry(root, "hooks");
+    let aarr = crate::install::json_util::ensure_array_entry(hooks, "AfterTool");
     let has_fold = aarr.iter().any(|e| {
         e.get("hooks")
             .and_then(|h| h.as_array())

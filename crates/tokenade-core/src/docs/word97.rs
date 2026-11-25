@@ -612,7 +612,8 @@ mod tests {
         assert_eq!(extract_doc(&xls), None);
         // A PowerPoint deck and an Outlook message share the container and
         // are read by nothing here: no format, so no « tokenade reads … » claim.
-        for unread in ["/SummaryInformation"] {
+        {
+            let unread = "/SummaryInformation";
             let bytes = container_with(unread);
             assert_eq!(
                 crate::docs::detect_format(Some("deck.ppt"), &bytes),

@@ -110,24 +110,6 @@ fn f() {
         }
     }
 
-    // ── credentials never reach the chunk store ──
-
-    #[test]
-    fn a_credential_in_the_source_never_becomes_a_chunk() {
-        let chunks = vec![(
-            1,
-            3,
-            "// deployment notes\naws_secret_access_key = AKIAIOSFODNN7EXAMPLE\npub fn deploy() {}"
-                .to_string(),
-        )];
-        let out = storable_text(&chunks);
-        // Both halves: the credential is gone AND the chunk is still a chunk
-        // about deployment, or the redaction would have cost the retrieval.
-        assert!(!out[0].contains("AKIAIOSFODNN7EXAMPLE"), "{}", out[0]);
-        assert!(out[0].contains("deployment notes"));
-        assert!(out[0].contains("pub fn deploy"));
-    }
-
     fn seed(conn: &Connection, hash: &str, snippet: &str) {
         conn.execute(
             "INSERT INTO file_chunks (content_hash, chunk_id, line_start, line_end, snippet)

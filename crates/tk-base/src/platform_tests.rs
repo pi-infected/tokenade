@@ -496,6 +496,8 @@ mod tests {
             pre.set("CLAUDE_CONFIG_DIR", "/somewhere/else/entirely");
             drop(pre);
         }
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe { std::env::set_var("CLAUDE_CONFIG_DIR", "/somewhere/else/entirely") };
         let h = ScratchHome::new("claude-config-neutral");
         assert!(
@@ -510,6 +512,8 @@ mod tests {
             std::env::var_os("CLAUDE_CONFIG_DIR").map(std::path::PathBuf::from),
             Some(std::path::PathBuf::from("/somewhere/else/entirely"))
         );
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe { std::env::remove_var("CLAUDE_CONFIG_DIR") };
     }
 
@@ -758,6 +762,8 @@ mod tests {
         );
 
         // Restore env to avoid contaminating other tests.
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             match prev_home {
                 Some(v) => std::env::set_var("HOME", v),

@@ -1120,15 +1120,6 @@ fn every_known_command_resolves_in_help_or_is_explicitly_hidden() {
     // the user never types directly. Adding to this list requires
     // a comment explaining why — drift = bug.
     const INTENTIONALLY_HIDDEN: &[&str] = &[
-        // Light-agent surface (feature-gated, experimental — scout v2 under
-        // active evaluation). Never in default
-        // builds; hidden from help until the experiments green-light a ship.
-        #[cfg(feature = "light-agent")]
-        "agent",
-        #[cfg(feature = "light-agent")]
-        "local-serve",
-        #[cfg(feature = "light-agent")]
-        "scout",
         // `proxy` runs a command directly (no `sh -c`) through the compaction
         // path. Kept dispatched — it is the target the PATH shim (`shim-exec`)
         // and internal callers use — but removed from the user help/README
@@ -1176,11 +1167,6 @@ fn every_known_command_resolves_in_help_or_is_explicitly_hidden() {
         // intel handlers; documenting it would invite agents to
         // call it directly and bypass the cache logic.
         "index-touch",
-        // Local model inference server (feature `local-llm`). The
-        // `tokenade agent --model local` client auto-spawns it in the
-        // background; users never run it by hand. Only present in
-        // `--features local-llm` builds.
-        "local-serve",
         // `tokenade help` is the catalogue printer itself — there
         // is no mini-help for "show the catalogue".
         "help",

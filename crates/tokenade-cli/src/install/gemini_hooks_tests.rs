@@ -370,3 +370,21 @@ mod every_gemini_hook_command_fails_open {
         );
     }
 }
+
+#[cfg(test)]
+mod a_settings_file_of_any_shape {
+    use super::install_after_tool_hook;
+
+    /// A user's `settings.json` may hold `"hooks": []` or `"hooks": null`
+    /// (a hand edit, another tool). The AfterTool writer unwrapped it as an
+    /// object and panicked the installer; it now resets it, as the BeforeTool
+    /// writer always did.
+    #[test]
+    fn a_hooks_value_that_is_not_an_object_is_replaced_not_unwrapped() {
+        for hooks in [serde_json::json!([]), serde_json::json!(null), serde_json::json!("x")] {
+            let mut settings = serde_json::json!({ "hooks": hooks });
+            assert!(install_after_tool_hook(&mut settings, "tokenade gemini-after"));
+            assert!(settings["hooks"]["AfterTool"].is_array(), "{settings}");
+        }
+    }
+}

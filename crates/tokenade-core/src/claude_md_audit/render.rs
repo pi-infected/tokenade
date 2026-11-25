@@ -10,29 +10,6 @@
 
 use super::*;
 
-/// Per-agent label for the rules cascade header in `render_with_label`.
-pub fn rules_label_for_agent(agent: &crate::detect::Agent) -> &'static str {
-    use crate::detect::Agent;
-    match agent {
-        Agent::ClaudeCode | Agent::T3Code | Agent::Unknown => "CLAUDE.md cascade",
-        Agent::Cursor => ".cursorrules cascade",
-        Agent::Cline => ".clinerules cascade",
-        Agent::DevinDesktop => ".windsurfrules / AGENTS.md cascade",
-        Agent::Copilot | Agent::CopilotVsCode => ".github/copilot-instructions.md cascade",
-        Agent::Codex => "AGENTS.md cascade",
-        Agent::Droid => "AGENTS.md cascade",
-        Agent::Pi => "AGENTS.md cascade",
-        Agent::OpenCode => "AGENTS.md / opencode.md cascade",
-        Agent::KiloCode => ".kilocoderules cascade",
-        Agent::Aider => "CONVENTIONS.md cascade",
-        Agent::Hermes => ".hermes.md then cwd AGENTS.md (first match)",
-        Agent::Qwen => "QWEN.md cascade",
-        Agent::Grok => ".grokrules cascade",
-        Agent::OpenClaw | Agent::Antigravity => "agent rules cascade",
-        Agent::Odysseus => "Odysseus soul.md",
-    }
-}
-
 /// Render an audit as a compact markdown report, labelled with `cascade_label`
 /// (e.g. "CLAUDE.md cascade", ".cursorrules cascade").
 pub fn render_with_label(audit: &CascadeAudit, cascade_label: &str) -> String {
@@ -106,7 +83,7 @@ pub fn render_with_label(audit: &CascadeAudit, cascade_label: &str) -> String {
 }
 
 /// Backward-compat wrapper — always uses the "CLAUDE.md cascade" label.
-/// New callers should prefer `render_with_label` with `rules_label_for_agent`.
+/// New callers should prefer `render_with_label` with their agent's label.
 pub fn render(audit: &CascadeAudit) -> String {
     render_with_label(audit, "CLAUDE.md cascade")
 }

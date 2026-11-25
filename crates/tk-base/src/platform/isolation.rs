@@ -326,6 +326,8 @@ impl Drop for ScopedEnv {
         // SAFETY: still inside the ENV_LOCK guard's lifetime. Restored in
         // reverse so a key touched twice returns to what it was first.
         for (key, prev) in self.saved.iter().rev() {
+            // SAFETY: ENV_LOCK is still held (this guard's lifetime), so no other thread reads
+            // the environment.
             unsafe {
                 match prev {
                     Some(v) => std::env::set_var(key, v),

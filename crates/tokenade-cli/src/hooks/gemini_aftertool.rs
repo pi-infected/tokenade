@@ -286,11 +286,7 @@ pub(crate) fn gemini_aftertool_decision(parsed: &serde_json::Value) -> Option<Ge
     // Net-savings gate — identical thresholds to the WebSearch compactor
     // (banner already included in `after`). Both legs must pass.
     let saved = before_chars.saturating_sub(after_chars);
-    let pct = if before_chars > 0 {
-        saved * 100 / before_chars
-    } else {
-        0
-    };
+    let pct = (saved * 100).checked_div(before_chars).unwrap_or(0);
     if saved < WEBSEARCH_MIN_SAVED_CHARS || pct < WEBSEARCH_MIN_SAVED_PCT {
         tokenade_core::debug_log::log(
             "gemini-afterhook",

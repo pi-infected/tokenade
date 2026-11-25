@@ -23,12 +23,6 @@
 //! aliases and inherit everything said about it.
 
 /// `(primary name, aliases)`, one tuple per dispatcher arm.
-///
-/// The three commands behind `--features light-agent` (`agent`,
-/// `local-serve`, `scout`) are here WITHOUT their `cfg`: the table only says
-/// « which name designates which command », a question whose answer does not
-/// depend on the compiled features. Without the feature, the dispatcher does
-/// not answer them — exactly as before.
 pub(crate) const COMMAND_ALIASES: &[(&str, &[&str])] = &[
     ("version", &["--version", "-V"]),
     ("proxy", &[]),
@@ -47,9 +41,6 @@ pub(crate) const COMMAND_ALIASES: &[(&str, &[&str])] = &[
     ("snapshot", &[]),
     ("read", &[]),
     ("ask", &["semantic", "sem"]),
-    ("agent", &[]),
-    ("local-serve", &[]),
-    ("scout", &[]),
     ("subagent-brief", &["subagent_brief"]),
     ("session-tick", &[]),
     ("fold-payload", &["fold_payload"]),

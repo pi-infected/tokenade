@@ -175,7 +175,7 @@ pub(crate) fn bash_writes_files(cmd: &str) -> bool {
                 if rest
                     .iter()
                     .take_while(|a| a.starts_with('-'))
-                    .any(|a| in_place_flag(a)) =>
+                    .any(&in_place_flag) =>
             {
                 return true
             }

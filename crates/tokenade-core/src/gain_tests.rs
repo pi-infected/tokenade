@@ -804,12 +804,16 @@ garbage line that should be skipped
         // `test` rows are refused while the ledger root is not redirected.
         set_root(gain_test_root());
         let prev = std::env::var("TOKENADE_NO_GAIN").ok();
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_NO_GAIN", "1");
             std::env::set_var("TOKENADE_FORCE_GAIN", "1");
         }
         record("test", "no-gain-probe", "lab", Savings::new(100, 25));
         let ledger = fs::read_to_string(current_ledger_path()).unwrap_or_default();
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_FORCE_GAIN");
             std::env::remove_var("TOKENADE_NO_GAIN");
@@ -834,6 +838,8 @@ garbage line that should be skipped
         // Deliberately does NOT touch HOME or `set_root`: both are
         // process-global and shared with every sibling test in this binary.
         let _g = gain_env_lock();
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe { std::env::remove_var("TOKENADE_FORCE_GAIN") };
         let ledger = current_ledger_path();
         record("test", "devguard-probe", "lab", Savings::new(1_000, 10));
@@ -862,6 +868,8 @@ garbage line that should be skipped
         set_root(dir.clone());
         // Dev builds book nothing (see `record_inner`); this test exercises the
         // write path itself, so it opts back in explicitly.
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe { std::env::set_var("TOKENADE_FORCE_GAIN", "1") };
         record("test", "demo", "lab", Savings::new(100, 25));
         let content = fs::read_to_string(dir.join(".tokenade").join("gain.jsonl")).unwrap();
@@ -924,6 +932,8 @@ garbage line that should be skipped
                 .contains("\"class\""),
             "a measured reading must not declare itself counterfactual"
         );
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe { std::env::remove_var("TOKENADE_FORCE_GAIN") };
         let _ = fs::remove_dir_all(&dir);
     }

@@ -256,6 +256,8 @@ mod agent_cli_tests {
             std::env::set_var("PATH", &bin);
         }
         let registered = install_cline_plugin(&target_home, false);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             match &saved {
                 Some(v) => std::env::set_var("PATH", v),

@@ -667,7 +667,7 @@ pub fn extract_scene_frames(
     let vf = if duration > 1.0 {
         format!(
             "fps={:.6},scale='min(1024,iw)':-2,format=yuvj420p",
-            (want as f64 / duration).min(8.0).max(0.000_1)
+            (want as f64 / duration).clamp(0.000_1, 8.0)
         )
     } else {
         "fps=4,scale='min(1024,iw)':-2,format=yuvj420p".to_string()
@@ -890,10 +890,12 @@ mod tests {
         }
         // The advertised default stays small enough that reading every frame
         // costs less than a typical transcript.
-        assert!(
-            DEFAULT_MAX_FRAMES <= 8,
-            "a large default would silently cost ~1.5k tok/frame"
-        );
+        const {
+            assert!(
+                DEFAULT_MAX_FRAMES <= 8,
+                "a large default would silently cost ~1.5k tok/frame"
+            )
+        };
     }
 
     /// Regression guard for the accounting incident: a media serve booked

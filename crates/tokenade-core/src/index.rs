@@ -139,7 +139,7 @@ pub struct Index {
     /// to answer "who calls X?" in seconds.
     ///
     /// Empty on indices built before this field existed; `Index::callers`
-    /// and `Index::callees` degrade gracefully when missing.
+    /// degrades gracefully when missing.
     ///
     /// NOT serialised into the main blob — it lives in its own `calls_blob`
     /// column and is fetched by [`Self::load_calls`], because 84 % of

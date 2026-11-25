@@ -112,21 +112,6 @@ impl UsageDedup {
         }
     }
 
-    /// Same decision as [`Self::admit`], taking the ALREADY canonicalised
-    /// usage string instead of the Value it came from.
-    ///
-    /// The transcript cache keeps that string rather than the record, so a
-    /// reader can dedup without re-parsing the line. It delegates to the same
-    /// hasher as `admit`, because two spellings of one rule is how the two
-    /// stop agreeing.
-    pub fn admit_canonical(&mut self, scope: &str, id: Option<&str>, canonical: &str) -> bool {
-        let Some(id) = id.filter(|s| !s.is_empty()) else {
-            return true;
-        };
-        self.seen
-            .insert(fingerprint_canonical(scope, id, canonical))
-    }
-
     /// How many duplicate records have been rejected so far — for the debug log
     /// and for tests that need to prove the guard actually fired.
     pub fn len(&self) -> usize {

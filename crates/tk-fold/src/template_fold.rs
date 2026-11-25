@@ -182,8 +182,7 @@ pub fn fold_templated_runs_counted(text: &str) -> (String, usize) {
             })
             .collect();
         let mut template = String::with_capacity(key.len());
-        let mut slot = 0usize;
-        for part in key.split('\u{1}') {
+        for (slot, part) in key.split('\u{1}').enumerate() {
             if slot > 0 {
                 let k = slot - 1;
                 if varies[k] {
@@ -197,7 +196,6 @@ pub fn fold_templated_runs_counted(text: &str) -> (String, usize) {
                 }
             }
             template.push_str(part);
-            slot += 1;
         }
         crate::fold_count::note_folded(members.len());
         out.push(format!("{template}  (×{})", members.len()));

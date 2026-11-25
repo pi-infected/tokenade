@@ -193,11 +193,7 @@ pub(crate) fn websearch_post_decision(
     let after_chars = after_text.len();
     // Net-savings gate (banner + omitted note already included in `after`).
     let saved = before_chars.saturating_sub(after_chars);
-    let pct = if before_chars > 0 {
-        saved * 100 / before_chars
-    } else {
-        0
-    };
+    let pct = (saved * 100).checked_div(before_chars).unwrap_or(0);
     if saved < WEBSEARCH_MIN_SAVED_CHARS || pct < WEBSEARCH_MIN_SAVED_PCT {
         tokenade_core::debug_log::log(
             "hookwrap-websearch-post",

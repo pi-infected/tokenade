@@ -51,7 +51,6 @@ dependency between crates cannot be a cycle.
 | `tokenade-core` | 1 281 | 190 100 | Everything else, plus the FACADE: it re-exports the 128 modules of the four crates under their historical paths, so no downstream import has to change. |
 | `tokenade-cli` | 257 | 107 361 | The binary, the hooks, the installer, the dashboard. |
 | `tokenade-bench` | 82 | 21 806 | The measurement harness. It is what puts a number on every decision in this document. |
-| `tokenade-llama-sys` | 1 | 16 | **Outside the workspace, on purpose.** Its `build.rs` compiles llama.cpp through cmake — slow, and it needs a C/C++ toolchain. The local sub-agent feature it carries is ON HOLD; it stays an OPTIONAL path dependency of `tokenade-cli`, pulled in by `--features local-llm` only. |
 
 ### `tokenade-core` — 1 281 files, 190 100 lines
 

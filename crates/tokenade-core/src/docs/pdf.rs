@@ -69,8 +69,7 @@ fn unreverse_hebrew_words(text: &str) -> Option<String> {
     let closes = words()
         .filter(|w| {
             w.chars()
-                .filter(|&c| is_letter(c))
-                .last()
+                .rfind(|&c| is_letter(c))
                 .is_some_and(|c| FINALS.contains(&c))
         })
         .count();

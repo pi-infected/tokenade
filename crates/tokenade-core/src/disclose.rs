@@ -232,7 +232,7 @@ pub fn stash_dir() -> PathBuf {
         if let Some(p) = TEST_STASH_DIR.with(|c| c.borrow().clone()) {
             return p;
         }
-        return crate::index_db::per_test_store("stash");
+        crate::index_db::per_test_store("stash")
     }
     #[cfg(not(test))]
     if let Some(p) = std::env::var_os("TOKENADE_STASH_DIR") {

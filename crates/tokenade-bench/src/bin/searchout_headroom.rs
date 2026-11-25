@@ -137,7 +137,7 @@ fn headroom_of(body: &str) -> Option<Headroom> {
         .filter(|(_, n)| **n > 1)
         .map(|(c, n)| (c.len() * (n - 1), *n, (*c).to_string()))
         .collect();
-    worst.sort_by(|a, b| b.0.cmp(&a.0));
+    worst.sort_by_key(|b| std::cmp::Reverse(b.0));
     worst.truncate(5);
     Some(Headroom {
         folded: folded.len(),

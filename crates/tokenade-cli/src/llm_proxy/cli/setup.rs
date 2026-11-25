@@ -152,7 +152,7 @@ pub(crate) fn do_install(agent: Agent, listen: &str, autostart: bool, enable: bo
             Ok((path, cmds)) => {
                 println!("\nwrote {}", path.display());
                 if enable {
-                    if let Err(rc) = apply_supervisor(&cmds, "start at boot", &listen) {
+                    if let Err(rc) = apply_supervisor(&cmds, "start at boot", listen) {
                         return rc;
                     }
                 } else {
@@ -400,17 +400,17 @@ pub(crate) fn do_autostart(
         );
         return 2;
     };
-    let path = autostart::unit_path(platform, &home, &listen);
+    let path = autostart::unit_path(platform, &home, listen);
     if remove {
         // The file goes only after the supervisor has been told, and the
         // command that tells it is printed rather than run: removing a unit
         // out from under a running service leaves a process nothing can name.
-        let cmds = autostart::disable_commands(platform, &listen);
+        let cmds = autostart::disable_commands(platform, listen);
         if enable {
             // `--enable` on `--remove` means the same thing it means on the
             // way in: run the list instead of printing it. The verb is still
             // the opposite one, and the list is the disable list.
-            if let Err(rc) = apply_supervisor(&cmds, "stop", &listen) {
+            if let Err(rc) = apply_supervisor(&cmds, "stop", listen) {
                 return rc;
             }
         } else {
@@ -447,7 +447,7 @@ pub(crate) fn do_autostart(
         Ok((path, cmds)) => {
             println!("wrote {}", path.display());
             if enable {
-                if let Err(rc) = apply_supervisor(&cmds, "start at boot", &listen) {
+                if let Err(rc) = apply_supervisor(&cmds, "start at boot", listen) {
                     return rc;
                 }
             } else {

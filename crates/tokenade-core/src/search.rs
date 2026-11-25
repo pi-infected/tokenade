@@ -730,7 +730,7 @@ mod engines;
 mod rank;
 mod render;
 pub use engines::*;
-pub use rank::*;
+use rank::*;
 pub use render::*;
 
 /// Run a search AND persist the breaker safely across processes.

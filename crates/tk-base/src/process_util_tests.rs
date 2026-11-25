@@ -209,6 +209,7 @@ mod tests {
         let _ = std::fs::remove_file(&out);
         let _ = std::io::stdout().flush();
 
+        // SAFETY: getpgrp(2) takes no argument and cannot fail.
         let parent_pgid = unsafe { libc::getpgrp() };
         match child_pgid {
             Some(cpg) => assert_ne!(

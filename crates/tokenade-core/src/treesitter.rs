@@ -140,7 +140,7 @@ fn parse_timeout_micros(source_len: usize) -> u64 {
 ///
 /// The call list is the syntactic edges only (caller name → callee
 /// name + line). Resolution (which `auth()` overload was hit?) lives
-/// in `Index::callers`/`Index::callees` and is best-effort.
+/// in `Index::callers` and is best-effort.
 ///
 /// ## Note on worker recycling
 ///

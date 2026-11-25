@@ -1029,16 +1029,12 @@ fn e2e_distinct_commands_in_one_second_are_each_credited() {
     }
     // A DOUBLED APPEND of the first one — every field identical. This is what
     // the credit-once key exists to collapse, and it must still collapse.
-    led.push_str(&format!(
-        r#"{{"op":"kubectl","label":"kubectl get pods","before":9198,"after":6674,"saved":2524,"source":"wrap","agent":"claude-code","sess":"s1","project":"p","ts":1788360919}}"#
-    ));
+    led.push_str(r#"{"op":"kubectl","label":"kubectl get pods","before":9198,"after":6674,"saved":2524,"source":"wrap","agent":"claude-code","sess":"s1","project":"p","ts":1788360919}"#);
     led.push('\n');
     // The same command from ANOTHER session in the same second: two agents,
     // two real events. A doubled append cannot differ here — one process
     // writes it and the copy carries its `sess`.
-    led.push_str(&format!(
-        r#"{{"op":"kubectl","label":"kubectl get pods","before":9198,"after":6674,"saved":2524,"source":"wrap","agent":"claude-code","sess":"s2","project":"p","ts":1788360919}}"#
-    ));
+    led.push_str(r#"{"op":"kubectl","label":"kubectl get pods","before":9198,"after":6674,"saved":2524,"source":"wrap","agent":"claude-code","sess":"s2","project":"p","ts":1788360919}"#);
     led.push('\n');
     // Every OTHER field of the key needs a row that differs in it alone, or a
     // key that drops that field scores identically and the mutation survives.

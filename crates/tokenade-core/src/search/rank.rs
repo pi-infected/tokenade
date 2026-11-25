@@ -139,12 +139,3 @@ pub(super) fn host_of(url: &str) -> String {
         .trim_start_matches("www.")
         .to_ascii_lowercase()
 }
-
-/// Dedup by `host + first path segment` so one site cannot fill the list.
-pub fn dedup_key(url: &str) -> String {
-    let no_scheme = url.split("://").nth(1).unwrap_or(url);
-    let mut parts = no_scheme.splitn(3, '/');
-    let host = parts.next().unwrap_or("").trim_start_matches("www.");
-    let first = parts.next().unwrap_or("");
-    format!("{host}/{first}")
-}

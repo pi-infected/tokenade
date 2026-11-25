@@ -366,7 +366,6 @@ pub(super) fn collect_dashboard_data(
         semantic_terms,
         model_used,
         dollars_saved,
-        light_agent: light_agent_stats(window_days),
         // Secrets masked before any byte reached a model — windowed like
         // every other figure (redact.jsonl rows carry a ts).
         secrets_redacted: tokenade_core::redact::redactions_since(window_cutoff),

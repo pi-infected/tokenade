@@ -36,7 +36,7 @@ fn read_line_capped<R: std::io::BufRead>(
     let mut n: u64 = 0;
     loop {
         let avail = match r.fill_buf() {
-            Ok(b) if b.is_empty() => break,
+            Ok([]) => break,
             Ok(b) => b,
             Err(e) => return Err(e),
         };

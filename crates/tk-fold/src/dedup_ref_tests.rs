@@ -554,6 +554,8 @@ mod tests {
             std::env::set_var("TOKENADE_DEDUP_MAX_BYTES", "4096");
         }
         assert_eq!(dedup_max_bytes(), 4096);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_DEDUP_MAX_BYTES", "0");
         }
@@ -562,6 +564,8 @@ mod tests {
             DEDUP_MAX_BYTES,
             "zero falls back to default"
         );
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_DEDUP_MAX_BYTES", "garbage");
         }
@@ -570,6 +574,8 @@ mod tests {
             DEDUP_MAX_BYTES,
             "garbage falls back to default"
         );
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_DEDUP_MAX_BYTES");
         }

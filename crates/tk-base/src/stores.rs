@@ -241,7 +241,7 @@ pub fn write_would_leak_into_real_store(project_path: &str, db_path: Option<&str
     // eviction and uses a tempdir-shaped path only incidentally.
     match db_path {
         None => return false,
-        Some(p) if p.is_empty() => return false,
+        Some("") => return false,
         Some(_) => {}
     }
     let home = crate::platform::home_dir()

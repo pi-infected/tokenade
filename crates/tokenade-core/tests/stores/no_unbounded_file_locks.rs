@@ -19,10 +19,6 @@ use std::path::{Path, PathBuf};
 /// An entry here is a claim that a human read the call and decided.
 const DELIBERATE_BLOCKING: &[(&str, &str)] = &[
     (
-        "crates/tokenade-cli/src/agent/local.rs",
-        "leader election between agent processes — the loser MUST wait for the winner",
-    ),
-    (
         "crates/tk-agents/src/mcp_wrap.rs",
         "`mcp-wrap install` rewrites another agent's config; a partial rewrite is worse than a wait",
     ),

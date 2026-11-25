@@ -204,8 +204,8 @@ impl Config {
 
 /// True when this bind address can only be reached from this machine.
 ///
-/// `pub(crate)` because there are TWO listeners in this binary and only one of
-/// them used to ask. See `agent::local::serve`.
+/// `pub(crate)` so that any listener this binary opens asks the same
+/// question; `every_listener_asks` checks that they do.
 ///
 /// Parsed rather than string-matched on "localhost": `127.0.0.1`, `[::1]` and
 /// the whole `127.0.0.0/8` block are loopback, and `0.0.0.0` is emphatically
@@ -342,39 +342,23 @@ mod every_listener_asks {
     use super::listens_on_loopback;
 
     /// Every listener this binary opens must ask the same question about its
-    /// bind address, and there are two of them.
+    /// bind address.
     ///
-    /// A SOURCE guard, because the failure it prevents is a THIRD listener
-    /// added without the check — which is exactly how the second one came to
-    /// be missing it. `agent::local::serve` took `TOKENADE_LOCAL_ADDR`
-    /// verbatim and bound it, while the rule that refuses a reachable address
-    /// lived here, with a refusal message and its own tests.
-    ///
-    /// It lives in THIS file rather than next to the listener it found,
-    /// because `agent/local.rs` is behind `#[cfg(feature = "local-llm")]` and
-    /// a guard that does not compile in the default suite guards nothing.
-    /// The family of a `tokenade-cli` module, under `src/<dir>/`.
-    fn family(dir: &str, name: &str) -> String {
-        let root = tokenade_core::source_guard::crates_dir()
-            .join("tokenade-cli")
-            .join("src")
-            .join(dir);
-        tokenade_core::source_guard::module_family(&root, name)
-    }
-
+    /// A SOURCE guard, because the failure it prevents is a NEW listener added
+    /// without the check — which is how a second one (since removed) came to be
+    /// missing it: it took its address from the environment verbatim and bound
+    /// it, while the rule that refuses a reachable address lived here. The sweep
+    /// covers every production file of the crate, so the next listener is
+    /// checked wherever it lands, not only where the last one lived.
     #[test]
     fn every_production_bind_asks_whether_the_address_is_local() {
-        // The FAMILIES: both modules grew children, and a call-site guard
-        // that read only the trunk would conclude "the safeguard is gone"
-        // over a mere move.
-        let local = family("agent", "local");
-        let server = family("llm_proxy", "server");
-        let files = [
-            ("agent/local", local.as_str()),
-            ("llm_proxy/server", server.as_str()),
-        ];
+        let root = tokenade_core::source_guard::crates_dir()
+            .join("tokenade-cli")
+            .join("src");
+        let sources = tokenade_core::source_guard::rust_sources(&root);
         let mut checked = 0usize;
-        for (name, src) in files {
+        for (path, src) in &sources {
+            let name = path.strip_prefix(&root).unwrap_or(path).display();
             for (n, line) in src.lines().enumerate() {
                 let t = line.trim_start();
                 if t.starts_with("//") || !t.contains("TcpListener::bind") {
@@ -400,7 +384,7 @@ mod every_listener_asks {
         // The sweep must be doing work: a rename of `TcpListener::bind` would
         // otherwise report a clean pass over nothing.
         assert!(
-            checked >= 2,
+            checked >= 1,
             "only {checked} configurable bind(s) found — this guard has gone blind"
         );
     }

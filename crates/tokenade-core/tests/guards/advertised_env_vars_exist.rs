@@ -41,12 +41,6 @@ const READ_ELSEWHERE: &[(&str, &str)] = &[
         "read by the PowerShell install script embedded in `cmake.rs` \
          (`$env:TOKENADE_TARGET`)",
     ),
-    (
-        "TOKENADE_SCOUT_",
-        "a PREFIX: `agent::scout::knob` composes the full name at run time \
-         (`format!(\"TOKENADE_SCOUT_{name}\")`), so it exists nowhere in full \
-         in the source",
-    ),
 ];
 
 fn crate_srcs() -> Vec<PathBuf> {

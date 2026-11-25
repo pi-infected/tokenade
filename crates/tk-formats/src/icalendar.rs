@@ -146,7 +146,7 @@ pub fn compact(text: &str) -> String {
                 stack.push(p.value.to_ascii_uppercase());
                 if matches!(p.value.to_ascii_uppercase().as_str(), "VEVENT" | "VTODO") {
                     current.clear();
-                } else if p.value.to_ascii_uppercase() != "VCALENDAR" {
+                } else if !p.value.eq_ignore_ascii_case("VCALENDAR") {
                     hidden.push(p.value.to_ascii_uppercase());
                 }
                 continue;

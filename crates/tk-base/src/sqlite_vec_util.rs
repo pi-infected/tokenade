@@ -43,6 +43,8 @@ pub fn register_sqlite_vec_extension() {
             *mut *mut std::os::raw::c_char,
             *const rusqlite::ffi::sqlite3_api_routines,
         ) -> std::os::raw::c_int;
+        // SAFETY: `sqlite3_vec_init` has exactly the entry-point signature `AutoExtFn` spells
+        // out, the one sqlite3_auto_extension expects.
         unsafe {
             let init_ptr = sqlite_vec::sqlite3_vec_init as *const ();
             let init_fn: AutoExtFn = std::mem::transmute(init_ptr);

@@ -179,7 +179,7 @@ pub fn heal_project_lectures(root: &Path) -> Vec<PathBuf> {
         .unwrap_or_default();
     let is_global = |p: &Path| {
         let c = std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-        globals.iter().any(|g| *g == c)
+        globals.contains(&c)
     };
     let fence = root.join(".claude").join("CLAUDE.md");
     if !is_global(&fence) && strip_old_claude_md_fence(&fence) {

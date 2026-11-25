@@ -110,19 +110,6 @@ impl Index {
         (hits, total)
     }
 
-    /// Functions called BY `name` — the outbound edges. Same semantics
-    /// as [`Self::callers`] but reversed direction. The caller-name
-    /// match is conservative: only functions whose declared name is
-    /// exactly `name` qualify (no fuzzy matching — we don't want a
-    /// query for `handle` to surface `handle_login`'s callees).
-    pub fn callees(&self, name: &str, limit: usize) -> Vec<&Call> {
-        self.calls
-            .iter()
-            .filter(|c| c.caller_name == name)
-            .take(limit)
-            .collect()
-    }
-
     /// Does this import text name the module `stem` — as a whole segment,
     /// not as a fragment of a longer name?
     ///

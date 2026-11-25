@@ -235,9 +235,8 @@ fn e2e_query_output_modes_reduce() {
     // count: a bare number.
     let (count, _e, c2) = run_in(&["query", "alpha", "--output-mode=count"], proj, proj);
     assert_eq!(c2, 0);
-    assert_eq!(
+    assert!(
         count.trim().parse::<usize>().is_ok(),
-        true,
         "count is numeric:\n{count}"
     );
     assert!(count.len() < full.len(), "count must reduce vs full");
@@ -344,7 +343,7 @@ fn a_hub_module_reports_its_reach_without_dumping_every_leaf() {
     let total: usize = cnt
         .split("dependents:")
         .nth(1)
-        .and_then(|t| t.trim().split_whitespace().next())
+        .and_then(|t| t.split_whitespace().next())
         .and_then(|t| t.parse().ok())
         .unwrap_or(0);
     assert!(total > 30, "count must report every dependent, got {cnt}");

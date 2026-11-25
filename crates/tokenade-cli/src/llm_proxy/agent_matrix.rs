@@ -884,7 +884,8 @@ mod tests {
         // read. Cursor talks to its own backend; `wire::detect` answers
         // `Unknown` and the body goes through untouched, which is the
         // contract, not a gap.
-        for a in [Agent::Cursor] {
+        {
+            let a = Agent::Cursor;
             let e = entry(a);
             assert!(matches!(e.speaks, Speaks::Proprietary(_)), "{}", a.as_str());
             let role = e.role(a.coverage());

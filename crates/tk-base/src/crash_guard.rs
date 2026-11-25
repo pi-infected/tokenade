@@ -162,6 +162,8 @@ mod imp {
                 buf[n] = b;
                 n += 1;
             }
+            // SAFETY: `buf[..n]` is initialised stack memory and write(2) is async-signal-safe,
+            // so it is sound inside this signal handler.
             unsafe {
                 libc::write(fd, buf.as_ptr() as *const libc::c_void, n);
             }
@@ -173,6 +175,9 @@ mod imp {
         let code = if !ptr.is_null() && len > 0 {
             let mut off = 0usize;
             while off < len {
+                // SAFETY: `ptr` is non-null and the salvage buffer it points to holds `len`
+                // bytes, published before this handler was installed; write(2) is async-signal-
+                // safe.
                 let n = unsafe { libc::write(1, ptr.add(off) as *const libc::c_void, len - off) };
                 if n <= 0 {
                     break;
@@ -186,6 +191,7 @@ mod imp {
         };
         // Fail-open: exit cleanly, NO core dump. _exit (not exit) skips atexit
         // handlers / buffer flushes that aren't signal-safe.
+        // SAFETY: _exit(2) is async-signal-safe and touches no Rust state; it never returns.
         unsafe {
             libc::_exit(code);
         }
@@ -226,6 +232,8 @@ mod imp {
                     LOG_FD.store(f.into_raw_fd(), Ordering::Relaxed);
                 }
             }
+            // SAFETY: `handler` is an `extern "C"` function that only calls async-signal-safe
+            // functions, which is all signal(2) requires of it.
             unsafe {
                 for &sig in &FATAL {
                     // SIG_DFL handler replaced by ours. `signal` is portable
@@ -250,6 +258,8 @@ mod imp {
 /// non-Unix, where the problem does not exist.
 pub fn restore_sigpipe_default() {
     #[cfg(unix)]
+    // SAFETY: restoring the default disposition of SIGPIPE installs no handler and has no
+    // memory-safety precondition.
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
     }
@@ -330,6 +340,8 @@ mod tests {
         // function for the fork-in-a-threaded-process deadlock the env read
         // used to cause. `None` is what the removed `TOKENADE_DEBUG_LOG` used
         // to produce, stated directly instead of via a process-global mutation.
+        // SAFETY: test-only fork. The child runs only async-signal-safe calls before it _exits,
+        // as fork in a threaded process requires.
         unsafe {
             let pid = libc::fork();
             if pid == 0 {

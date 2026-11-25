@@ -62,7 +62,7 @@ pub(super) fn banked_delta(
         return 0;
     }
     let shown = match s.deliverable_tokens {
-        Some(d) => d as u64,
+        Some(d) => d,
         None => match crate::coefficients::delivery_cap_tokens(agent, source, op) {
             u64::MAX => return 0,
             cap => cap,

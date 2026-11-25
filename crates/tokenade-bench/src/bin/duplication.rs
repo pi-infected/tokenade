@@ -280,7 +280,7 @@ fn main() {
         .filter(|(_, sites)| sites.len() > 1)
         .map(|(body, sites)| (sites.len(), body.split(' ').count(), sites))
         .collect();
-    dups.sort_by(|a, b| (b.0 * b.1).cmp(&(a.0 * a.1)));
+    dups.sort_by_key(|b| std::cmp::Reverse(b.0 * b.1));
 
     println!(
         "{} files, bodies >= {min_lines} lines, excluding #[cfg(test)]",

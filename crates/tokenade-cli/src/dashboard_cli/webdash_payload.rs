@@ -57,61 +57,6 @@ pub(super) fn cache_rewrites_in_window(
 /// misleading "saved" bar (same rationale as cmd_dashboard_text).
 /// The model with the most tokens (input+output) across all agents — picks
 /// which live price table to value token savings against (#3).
-/// Aggregate `tokenade agent` delegations from `gain_estimated.jsonl`
-/// (rows tagged `class="light-agent"`, written by
-/// [`tokenade_core::gain::record_light_agent`]). Sums the input/output
-/// split the dashboard shows, and a per-task-kind rollup. `window_days`
-/// scopes by `ts` (0 = lifetime).
-pub(super) fn light_agent_stats(window_days: u32) -> tokenade_core::dashboard::LightAgentStats {
-    use std::collections::BTreeMap;
-    let mut out = tokenade_core::dashboard::LightAgentStats::default();
-    let path = tokenade_core::gain::estimated_ledger_path();
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => return out,
-    };
-    let now = tokenade_core::platform::now_unix_secs();
-    let cutoff = if window_days == 0 {
-        0
-    } else {
-        now.saturating_sub(window_days as u64 * 86_400)
-    };
-    // (tasks, agent_in, agent_out) per kind
-    let mut kinds: BTreeMap<String, (u64, u64, u64)> = BTreeMap::new();
-    for line in content.lines() {
-        let v: serde_json::Value = match serde_json::from_str(line) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        if v["class"].as_str() != Some("light-agent") {
-            continue;
-        }
-        if v["ts"].as_u64().unwrap_or(0) < cutoff {
-            continue;
-        }
-        let ain = v["agent_in"].as_u64().unwrap_or(0);
-        let aout = v["agent_out"].as_u64().unwrap_or(0);
-        out.tasks += 1;
-        out.agent_in += ain;
-        out.agent_out += aout;
-        out.tool_in += v["tool_in"].as_u64().unwrap_or(0);
-        out.tool_out += v["tool_out"].as_u64().unwrap_or(0);
-        out.saved += v["saved"].as_u64().unwrap_or(0);
-        let kind = v["op"].as_str().unwrap_or("delegate").to_string();
-        let e = kinds.entry(kind).or_insert((0, 0, 0));
-        e.0 += 1;
-        e.1 += ain;
-        e.2 += aout;
-    }
-    out.by_kind = kinds
-        .into_iter()
-        .map(|(k, (t, i, o))| (k, t, i, o))
-        .collect();
-    // Most-used kinds first.
-    out.by_kind.sort_by(|a, b| b.1.cmp(&a.1));
-    out
-}
-
 pub(super) fn dominant_model_of(
     usage: &tokenade_core::agent_transcripts::ModelUsageByDay,
 ) -> Option<String> {
@@ -544,11 +489,6 @@ pub(crate) fn build_webdash_payload() -> serde_json::Value {
     let days_json = day_rows_json(days);
     let ledger_display = home_relative(&gain_path, &home_str);
 
-    // light-agent shelved — payload block removed (dashboard section retired
-    // 2026-07). The stats call outlived the section it fed and its result was
-    // thrown away; measured at no cost to the render, so this is dead weight
-    // removed, not a speed-up.
-    let light_agent_json = serde_json::Value::Null;
     let split = io_split(
         comp_saved,
         digest.output_lean_by_agent.iter().map(|(_, n)| *n).sum(),
@@ -556,7 +496,6 @@ pub(crate) fn build_webdash_payload() -> serde_json::Value {
 
     serde_json::json!({
         "days": days_json,
-        "light_agent": light_agent_json,
         // Per-day estimated buckets so the JS can window the accounting card
         // exactly like the terminal's `--days N` block. `cross` (other-agent
         // output-lean) is lifetime-only in the terminal too.

@@ -114,7 +114,7 @@ fn parse(xml: &str) -> El {
     for c in re(r#"(?s)<(/?)([\w:]+)([^>]*?)(/?)>|([^<]+)"#).captures_iter(xml) {
         match (
             c.get(5),
-            &c.get(1).map_or("", |m| m.as_str())[..],
+            c.get(1).map_or("", |m| m.as_str()),
             c.get(4).is_some_and(|m| !m.as_str().is_empty()),
         ) {
             (Some(t), _, _) => stack

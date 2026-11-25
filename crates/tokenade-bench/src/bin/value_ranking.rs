@@ -190,7 +190,7 @@ fn main() {
             (name, count, op_delivered(o), pct, share, excluded)
         })
         .collect();
-    rows.sort_by(|a, b| b.2.cmp(&a.2));
+    rows.sort_by_key(|b| std::cmp::Reverse(b.2));
 
     let span = &v["span"];
     let mut md = String::new();
@@ -669,7 +669,7 @@ fn aggregate_by_cmd(text: &str) -> (Vec<(String, String, u64, u64, u64)>, u64, u
         })
         .map(|((op, cmd), (n, rest, before))| (op, cmd, n, rest, before))
         .collect();
-    out.sort_by(|a, b| b.3.cmp(&a.3));
+    out.sort_by_key(|b| std::cmp::Reverse(b.3));
     probe_rows.sort();
     (out, rolled_up_after, probe_after, probe_rows)
 }

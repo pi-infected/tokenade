@@ -158,7 +158,7 @@ pub(in crate::docs) fn ooxml_number_styles(numbering_xml: &str) -> NumberStyles 
             let text = text.unwrap_or_default();
             let (prefix, suffix) = match text.matches('%').count() {
                 1 => text
-                    .split_once(|c: char| c == '%')
+                    .split_once('%')
                     .map_or((String::new(), ".".into()), |(p, rest)| {
                         (p.to_string(), rest.get(1..).unwrap_or("").to_string())
                     }),

@@ -260,8 +260,8 @@ pub(crate) fn cmd_scrub_cache(rest: &[String]) -> i32 {
         println!("  --  semantic.db — nothing to redact");
     }
 
-    // 3b. file_search.db — same remedy, same reason, one store over. A chunk
-    // written since `index_content` started redacting cannot match.
+    // 3b. file_search.db — same remedy, same reason, one store over. Nothing
+    // writes there any more; only chunks from before redaction can match.
     let fsr = tokenade_core::file_search::purge_redactable(dry_run);
     if fsr > 0 {
         if dry_run {

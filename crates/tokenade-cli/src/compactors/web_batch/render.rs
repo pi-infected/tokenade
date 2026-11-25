@@ -344,9 +344,8 @@ pub fn web_batch_render_one(
     // The extraction is done HERE, before the stash consumes the markdown: it
     // is a pure computation, and the ordering avoids one page copy per page
     // read.
-    let asked = prompt.as_deref().is_some_and(|p| !p.trim().is_empty());
+    let asked = prompt.is_some_and(|p| !p.trim().is_empty());
     let scoped = prompt
-        .as_deref()
         .filter(|p| !p.trim().is_empty())
         .and_then(|q| super::scope_extract(d.full_md.as_deref().unwrap_or(&d.md), q));
     // The stash holds the PAGE, not the cut: when the hard ceiling bit,

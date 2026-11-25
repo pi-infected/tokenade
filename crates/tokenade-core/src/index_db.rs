@@ -726,14 +726,20 @@ mod tests {
     fn index_max_bytes_honours_env_override() {
         // No io_lock here (no shared module lock in this test mod); the
         // var name is unique to this crate so cross-test bleed is nil.
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_INDEX_MAX_BYTES", "8192");
         }
         assert_eq!(index_max_bytes(), 8192);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::set_var("TOKENADE_INDEX_MAX_BYTES", "0");
         }
         assert_eq!(index_max_bytes(), INDEX_MAX_BYTES);
+        // SAFETY: test-only environment mutation. CI runs the suite under nextest, one process
+        // per test, so no other thread reads the environment while it changes.
         unsafe {
             std::env::remove_var("TOKENADE_INDEX_MAX_BYTES");
         }

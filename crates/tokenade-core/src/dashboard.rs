@@ -27,24 +27,6 @@ use elsewhere::*;
 pub use hero::*;
 use sections::*;
 
-/// Aggregate savings from `tokenade agent` delegations (the light-agent
-/// feature). The gain is unlike compaction: a zero-cost delegate BURNED
-/// `agent_in`+`agent_out` tokens the orchestrator never paid, in exchange
-/// for `tool_in`+`tool_out` (the task it wrote + the answer it read). We
-/// keep input vs output split, as the goal-writer asked. Built from
-/// `gain_estimated.jsonl` rows with `class="light-agent"`.
-#[derive(Debug, Clone, Default)]
-pub struct LightAgentStats {
-    pub tasks: u64,
-    pub agent_in: u64,
-    pub agent_out: u64,
-    pub tool_in: u64,
-    pub tool_out: u64,
-    pub saved: u64,
-    /// Per task-kind rollup: (kind, tasks, agent_in, agent_out).
-    pub by_kind: Vec<(String, u64, u64, u64)>,
-}
-
 /// Aggregated savings + heuristic data the dashboard renders. Built by
 /// the CLI from `~/.tokenade/gain.jsonl`; consumed by [`render`].
 #[derive(Debug, Clone, Default)]
@@ -150,9 +132,6 @@ pub struct DashboardData {
     pub model_used: Option<String>,
     /// Estimated real-dollar value of the savings at that model's live prices.
     pub dollars_saved: f64,
-    /// Savings from `tokenade agent` light-agent delegations (input/output
-    /// split). Empty (`tasks == 0`) hides the section.
-    pub light_agent: LightAgentStats,
 }
 
 /// One row of the AGENT USAGE section. `display_cwd` is what the

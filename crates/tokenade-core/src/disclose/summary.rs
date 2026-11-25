@@ -64,7 +64,7 @@ pub(super) fn head_tail_preview(body: &str, head_budget: usize, tail_budget: usi
     format!("{head}\n… (preview clamped, {dropped} chars elided — the full text is in the stash) …\n{tail}")
 }
 
-//// **The recovery menu, spelled in ONE place.**
+/// **The recovery menu, spelled in ONE place.**
 ///
 /// Short by construction: this menu goes out on EVERY fold, and a line that
 /// doubles in length is paid 265 times over the corpus. Measured: the first

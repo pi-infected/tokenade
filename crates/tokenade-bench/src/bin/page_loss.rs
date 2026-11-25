@@ -335,7 +335,6 @@ fn strip_tags_as_a_browser_would(tags: &regex::Regex, s: &str) -> String {
             note(&s[next.start()..next.end()]);
             end = next.end();
         }
-        drop(note);
         out.push_str(&s[cursor..m.start()]);
         let welds = out.chars().next_back().is_some_and(char::is_alphanumeric)
             && s[end..].chars().next().is_some_and(char::is_alphanumeric);

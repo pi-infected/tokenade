@@ -73,7 +73,7 @@ fn family_of(text: &str, at: usize) -> String {
     //
     // The only exact attachment is the bracket that opens the banner where the hash
     // is written: we walk back counting closed brackets.
-    let head = text[..at].as_bytes();
+    let head = &text.as_bytes()[..at];
     let mut depth = 0i32;
     let mut open = None;
     for i in (0..head.len()).rev() {

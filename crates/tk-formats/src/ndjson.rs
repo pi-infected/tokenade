@@ -272,21 +272,19 @@ pub fn compact(text: &str) -> String {
     if total_errors + total_warnings + total_info + total_debug == 0
         && event_type_order.len() <= 1
         && unparsed == 0
+        && lines.len() >= 10
     {
-        if lines.len() >= 10 {
-            let objs: Option<Vec<serde_json::Map<String, Value>>> = lines
-                .iter()
-                .map(|l| {
-                    serde_json::from_str::<Value>(l.trim())
-                        .ok()
-                        .and_then(|v| v.as_object().cloned())
-                })
-                .collect();
-            if let Some(table) =
-                objs.and_then(|o| crate::json::records_table(&o, text, "JSON records"))
-            {
-                return table;
-            }
+        let objs: Option<Vec<serde_json::Map<String, Value>>> = lines
+            .iter()
+            .map(|l| {
+                serde_json::from_str::<Value>(l.trim())
+                    .ok()
+                    .and_then(|v| v.as_object().cloned())
+            })
+            .collect();
+        if let Some(table) = objs.and_then(|o| crate::json::records_table(&o, text, "JSON records"))
+        {
+            return table;
         }
     }
 
