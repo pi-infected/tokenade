@@ -120,8 +120,11 @@ pub(crate) fn handle_cursor_pretool(
         // came back `'tokenade' n'est pas reconnu`, 33 738 → 0 bytes, exit 1 —
         // the compaction cell red and the user's command DESTROYED, on the one
         // agent whose rewrite replaces the command outright.
-        let exe_token = crate::install::wrap_exe_token(&exe);
-        crate::hooks::replay::try_replay_rewrite(&skey, &cwd, cmd, &exe)
+        // On Windows Cursor runs the result in PowerShell, which needs the
+        // `&` call operator in front of a quoted path (#14) — the replay
+        // command included, which until then got the raw unquoted path.
+        let exe_token = crate::install::powershell_agent_exe_token(&exe);
+        crate::hooks::replay::try_replay_rewrite(&skey, &cwd, cmd, &exe_token)
             .unwrap_or_else(|| cursor_wrap_rewrite_with_session(cmd, &skey, &exe_token))
     };
     let out = serde_json::json!({
@@ -209,9 +212,14 @@ mod cursor_rewrite_tests {
         } else {
             "/opt/some where/tokenade"
         };
-        let token = crate::install::wrap_exe_token(exe);
+        let token = crate::install::powershell_agent_exe_token(exe);
         let got = super::cursor_wrap_rewrite_with_session("git status", "", &token);
         assert!(got.contains(&token), "got: {got}");
+        // PowerShell reads a line that opens on a quoted string as a value,
+        // not a call (#14).
+        if cfg!(windows) {
+            assert!(got.starts_with("& '"), "got: {got}");
+        }
         assert!(
             !got.starts_with("tokenade "),
             "a bare name is what broke Windows: {got}"

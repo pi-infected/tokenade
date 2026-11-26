@@ -626,9 +626,9 @@ pub(crate) fn handle_powershell_pretool(
     // uniform with the Bash rewrite and the hook command. PowerShell's `&`
     // call operator runs a single-quoted path verbatim. (A 0.7.0 user report:
     // zero PowerShell-rewrite gains alongside the mangled Bash path.)
-    let exe_q = powershell_quote(&exe.replace('\\', "/"));
     let rewritten = format!(
-        "& {exe_q} wrap --shell powershell {}",
+        "{} wrap --shell powershell {}",
+        crate::install::powershell_call_exe(&exe),
         powershell_quote(cmd)
     );
     let decision = serde_json::json!({

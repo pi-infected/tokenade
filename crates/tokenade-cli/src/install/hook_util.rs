@@ -250,6 +250,30 @@ pub(crate) fn powershell_quote(s: &str) -> String {
     single_quoted(s, "''")
 }
 
+/// The tokenade exe as the head of a command PowerShell will run: the `&`
+/// call operator, then the path single-quoted with forward slashes.
+///
+/// A line that STARTS with a quoted string is an expression to PowerShell, not
+/// a call: `"C:\…\tokenade.exe" wrap …` fails with `Unexpected token 'wrap'`,
+/// and since the rewrite replaces the agent's command, nothing runs (#14,
+/// Antigravity on Windows 11). `&` is what turns the string into a call.
+/// Single quotes keep it literal (`$`, and the `@` in the npm install path,
+/// mean nothing inside them); forward slashes keep it identical to the
+/// Claude Code PowerShell rewrite, which has used this form since 0.7.0.
+pub(crate) fn powershell_call_exe(exe: &str) -> String {
+    format!("& {}", powershell_quote(&exe.replace('\\', "/")))
+}
+
+/// The exe token for an agent whose shell tool runs through PowerShell on
+/// Windows (Cursor, Antigravity) and a POSIX shell elsewhere.
+pub(crate) fn powershell_agent_exe_token(exe: &str) -> String {
+    if cfg!(windows) {
+        powershell_call_exe(exe)
+    } else {
+        wrap_exe_token(exe)
+    }
+}
+
 #[cfg(test)]
 mod hook_quote_tests {
     use super::*;
@@ -432,6 +456,20 @@ mod hook_quote_tests {
         assert_eq!(posix_quote("with$dollar"), "'with$dollar'");
         // Single quote in the input gets the close-escape-reopen dance.
         assert_eq!(posix_quote("o'brien"), "'o'\\''brien'");
+    }
+
+    #[test]
+    fn a_powershell_command_calls_the_exe_rather_than_naming_a_string() {
+        assert_eq!(
+            powershell_call_exe(
+                r"C:\Users\a b\AppData\Roaming\npm\node_modules\@tokenade\cli\tokenade.exe"
+            ),
+            "& 'C:/Users/a b/AppData/Roaming/npm/node_modules/@tokenade/cli/tokenade.exe'"
+        );
+        assert_eq!(
+            powershell_call_exe(r"C:\it's\tk.exe"),
+            "& 'C:/it''s/tk.exe'"
+        );
     }
 
     #[test]

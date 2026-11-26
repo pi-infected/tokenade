@@ -152,7 +152,9 @@ pub(crate) fn handle_antigravity_pretool(
         .ok()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|| "tokenade".into());
-    let exe_token = crate::install::wrap_exe_token(&exe);
+    // `run_command` runs in PowerShell on Windows: a bare quoted path there
+    // is a string, not a call (#14).
+    let exe_token = crate::install::powershell_agent_exe_token(&exe);
     let Some(out) = antigravity_pretool_response(parsed, &exe_token, &skey) else {
         return 0;
     };
