@@ -25,13 +25,13 @@
     "tar": "^7.5.16"
   },
   "optionalDependencies": {
-    "@tokenade/cli-linux-x64": "2.0.10",
-    "@tokenade/cli-linux-x64-musl": "2.0.10",
-    "@tokenade/cli-linux-arm64-musl": "2.0.10",
-    "@tokenade/cli-darwin-arm64": "2.0.10",
-    "@tokenade/cli-darwin-x64": "2.0.10",
-    "@tokenade/cli-win32-x64": "2.0.10",
-    "@tokenade/cli-win32-arm64": "2.0.10"
+    "@tokenade/cli-linux-x64": "2.0.11",
+    "@tokenade/cli-linux-x64-musl": "2.0.11",
+    "@tokenade/cli-linux-arm64-musl": "2.0.11",
+    "@tokenade/cli-darwin-arm64": "2.0.11",
+    "@tokenade/cli-darwin-x64": "2.0.11",
+    "@tokenade/cli-win32-x64": "2.0.11",
+    "@tokenade/cli-win32-arm64": "2.0.11"
   },
   "files": [
     "bin/",
