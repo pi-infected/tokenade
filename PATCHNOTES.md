@@ -1,4 +1,7 @@
 # Tokenade — what's new
+## 2.0.12
+- Windows: Cursor and Antigravity commands run again. Their shell is PowerShell, and the rewritten command started with the quoted path of `tokenade.exe`, which PowerShell reads as a string rather than a program to call (`Unexpected token 'wrap'`), so the agent's command never ran. The rewrite now calls the binary with PowerShell's `&` operator, the form already used for Claude Code's PowerShell tool; Cursor's cached re-run of an unchanged command gets the same fix (#14).
+
 ## 2.0.11
 - A third-party MCP result longer than 4 KB with an accented letter or an emoji right at the 4 KB mark is compacted again. The check for screenshot captures cut the text in the middle of that character and panicked, so the hook gave up and the result went through whole. The post dates `tokenade web` reads from Mastodon, Bluesky, Lemmy and Hacker News are cut the same safe way.
 - Dashboard: a project in a directory whose name only starts like your home directory (`/home/al2/x` when home is `/home/al`) is no longer shown as `~2/x`.
