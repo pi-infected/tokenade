@@ -1,4 +1,8 @@
 # Tokenade — what's new
+## 2.0.11
+- A third-party MCP result longer than 4 KB with an accented letter or an emoji right at the 4 KB mark is compacted again. The check for screenshot captures cut the text in the middle of that character and panicked, so the hook gave up and the result went through whole. The post dates `tokenade web` reads from Mastodon, Bluesky, Lemmy and Hacker News are cut the same safe way.
+- Dashboard: a project in a directory whose name only starts like your home directory (`/home/al2/x` when home is `/home/al`) is no longer shown as `~2/x`.
+
 ## 2.0.10
 - Folding a Claude Code transcript (before a compaction, at session start for idle sessions, on resume, `tokenade compact-sessions`) no longer loses the lines the session appends while it runs. The transcript was rewritten as a temp copy renamed over the original, so every line written between the read and the rename was dropped, and the file got a new identity. Each fold now overwrites its own line in place, and only if that line is still the one that was read; everything else, including the file's identity and any trailing newline, is left as it was. On Windows this also ends the `Access is denied` rename failures that left a `.jsonl.tokenade-tmp` copy behind (#12).
 - `TOKENADE_NO_PRECOMPACT_MASK=1` turns off the fold that runs right before Claude Code compacts a session, on its own. `TOKENADE_NO_SESSION_COMPACT` still covers the session-start trims (#12).
