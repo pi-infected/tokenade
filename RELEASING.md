@@ -83,6 +83,16 @@ gh release create model-$V --latest=false --title "Embedding model $V" \
 "latest", `releases/latest/download/manifest.json` would 404 and auto-update
 would stop for every client.
 
+## CI dry run
+
+Actions > Release > Run workflow (or `gh workflow run release.yml --ref main`)
+runs the whole release on the current commit without publishing anything:
+version check, the 7 builds and their smoke tests, the artifact hand-off,
+archives, manifest, signing, and `npm pack` of every package. No GitHub
+Release is created and nothing reaches npm. Run it after any change to
+`release.yml` or to the actions it pins (CI does not exercise this file), so
+the next tag is not the first test.
+
 ## Local dry run
 
 ```sh

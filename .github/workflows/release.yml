@@ -3,10 +3,17 @@ name: Release
 # Push a tag `v<version>` (matching Cargo.toml and npm/package.json) to build
 # the 7 targets, publish a GitHub Release carrying the archives + the signed
 # update manifest, then publish the npm packages. See RELEASING.md.
+#
+# Run by hand (Actions > Release > Run workflow) it is a DRY RUN of the
+# current commit: same check, builds, artifact hand-off, packing and signing,
+# but no GitHub Release and no npm publish (the packages are `npm pack`ed
+# instead). That is how a change to this file is tested before a tag depends
+# on it: CI never runs it.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -35,10 +42,13 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 20
-      - run: node scripts/ci/release.mjs check-version --tag "${{ github.ref_name }}"
       - id: v
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          # A dry run has no tag: check the version the commit declares.
+          tag="$GITHUB_REF_NAME"
+          [ "$GITHUB_EVENT_NAME" = push ] || tag="v$(node -p 'require(`./npm/package.json`).version')"
+          node scripts/ci/release.mjs check-version --tag "$tag"
+          v="${tag#v}"
           echo "version=$v" >> "$GITHUB_OUTPUT"
           case "$v" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
 
@@ -143,7 +153,7 @@ jobs:
   publish:
     needs: [check, build]
     runs-on: ubuntu-latest
-    environment: release
+    environment: ${{ github.event_name == 'push' && 'release' || '' }}
     permissions:
       contents: write
     env:
@@ -193,6 +203,7 @@ jobs:
           cat notes.md
 
       - name: GitHub Release (draft, upload, then publish)
+        if: github.event_name == 'push'
         run: |
           flags=()
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease --latest=false); else flags+=(--latest); fi
@@ -208,6 +219,7 @@ jobs:
           node scripts/ci/release.mjs npm-platform --dist dist --version "$VERSION" --out npm-out
           for d in npm-out/*/; do
             name=$(node -p "require('./$d/package.json').name")
+            if [ "$GITHUB_EVENT_NAME" != push ]; then (cd "$d" && npm pack); continue; fi
             if npm view "$name@$VERSION" version >/dev/null 2>&1; then echo "= $name@$VERSION already published"; continue; fi
             (cd "$d" && npm publish --access public --tag "$tag")
           done
@@ -218,5 +230,6 @@ jobs:
         working-directory: npm
         run: |
           tag=latest; [ "$PRERELEASE" = true ] && tag=next
+          if [ "$GITHUB_EVENT_NAME" != push ]; then npm pack; exit 0; fi
           if npm view "@tokenade/cli@$VERSION" version >/dev/null 2>&1; then echo "already published"; exit 0; fi
           npm publish --access public --tag "$tag"
